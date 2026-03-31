@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment variables
+.env
+
+# Models (large files)
+models/yolo/*.pt
+models/embeddings/*
+!models/embeddings/.gitkeep
+
+# Data (large files)
+data/raw/images/*
+!data/raw/images/.gitkeep
+data/fda_labels/*.json
+data/ddinter/*.csv
+data/processed/*
+!data/processed/.gitkeep
+
+# ChromaDB local storage
+medlabel_db/
+chroma_db/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
