@@ -1,0 +1,22 @@
+# Environment for MedLabel (optimized for Apple Silicon / M4 Pro)
+
+# Computer Vision & OCR
+ultralytics>=8.3.0       # YOLOv11
+paddlepaddle             # PaddleOCR engine (CPU)
+paddleocr>=2.7.0        # OCR logic
+opencv-python-headless  # Image processing
+pillow                  # Image handling
+
+# AI & LLM
+google-generativeai>=0.3.0  # Gemini 2.0 Flash
+langchain>=0.1.0            # Agentic framework
+langchain-google-genai>=1.0.0
+chromadb>=0.4.0             # Vector DB
+sentence-transformers>=2.2.0 # BGE-M3 local embeddings
+
+# Application & Tools
+streamlit>=1.30.0       # UI Dashboard
+python-dotenv           # API Key management
+requests                # API handling
+pandas                  # Data handling
+pydantic>=2.0.0         # Data models/validation
