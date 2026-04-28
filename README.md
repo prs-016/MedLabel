@@ -103,8 +103,9 @@ USER: Photo of Any Medicine Packaging
 > ⚠️ The NIH RxNav **Drug Interaction API was discontinued in January 2024.** MedLabel uses openFDA label drug_interactions fields + DDInter for interaction data instead.
 
 ### DDInter (Drug-Drug Interactions)
-- Download: `https://ddinter2.scbdd.com` — CSV files with severity, mechanism, management
-- License: CC BY-NC-SA 4.0 (non-commercial — fine for student projects)
+- **Primary Source (Kaggle Mirror):** [https://www.kaggle.com/datasets/thedevastator/ddinter-dataset-drug-drug-interactions](https://www.kaggle.com/datasets/thedevastator/ddinter-dataset-drug-drug-interactions) — *Use this if the official site has SSL/certificate issues.*
+- **Secondary Source (Zenodo):** [https://zenodo.org/records/5549420](https://zenodo.org/records/5549420)
+- **Official Site:** [https://ddinter2.scbdd.com](https://ddinter2.scbdd.com) — *Main reference site for data schema.*
 
 ---
 
@@ -293,7 +294,7 @@ RULES:
 | openFDA Adverse Events | https://open.fda.gov/apis/drug/event/ |
 | openFDA Bulk Downloads | https://open.fda.gov/apis/downloads/ |
 | NIH RxNorm API | https://lhncbc.nlm.nih.gov/RxNav/APIs/RxNormAPIs.html |
-| DDInter Database | https://ddinter2.scbdd.com |
+| DDInter Database (v2) | [Kaggle](https://www.kaggle.com/datasets/thedevastator/ddinter-dataset-drug-drug-interactions) / [Zenodo](https://zenodo.org/records/5549420) |
 | Ultralytics YOLOv11 | https://docs.ultralytics.com/ |
 | PaddleOCR | https://github.com/PaddlePaddle/PaddleOCR |
 | ChromaDB | https://docs.trychroma.com/ |
