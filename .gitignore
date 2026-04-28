@@ -29,6 +29,7 @@ models/embeddings/*
 # Data (large files)
 data/raw/images/*
 !data/raw/images/.gitkeep
+!data/raw/images/sample_ocr_test.png
 data/fda_labels/*.json
 data/ddinter/*.csv
 data/processed/*
