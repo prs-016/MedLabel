@@ -2,11 +2,11 @@
 
 # Computer Vision & OCR
 ultralytics>=8.3.0        # YOLOv11
-paddleocr>=2.7,<3         # Path A (flat labels)
+paddleocr>=2.7,<3       # Path A (flat labels)
 # PaddleOCR does not install PaddlePaddle (`import paddle`). After this file run:
 #   python -m pip install -r requirements-paddle.txt
 opencv-python-headless>=4.8,<5
-pillow                    # Image handling
+pillow                  # Image handling
 numpy>=1.21,<3
 
 # AI & LLM

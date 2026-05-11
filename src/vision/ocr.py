@@ -1,8 +1,9 @@
 """
 OCR routes for MedLabel: Path A (PaddleOCR + OpenCV) and Path B (Gemini Vision).
 
-Path A uses CLAHE + adaptive threshold, then PaddleOCR. Path B sends bottle photos
-to Gemini and parses structured JSON. Both return ``OCRResult`` for downstream code.
+Both paths target the same label JSON schema (``LABEL_SCHEMA_KEYS``). Path B fills it
+from image + VLM; Path A runs Paddle, then optionally Gemini on the OCR text so fields
+match. Use ``OCRResult.to_public_dict()`` at API boundaries for a stable JSON shape.
 """
 
 from __future__ import annotations
@@ -36,11 +37,16 @@ GEMINI_API_URL = (
     "gemini-2.5-flash:generateContent"
 )
 
-GEMINI_PROMPT = """
-You are reading the label on a curved medicine bottle.
-Extract the following fields exactly as printed.
-If a field is not visible, use an empty string.
+LABEL_SCHEMA_KEYS: tuple[str, ...] = (
+    "drug_name",
+    "dosage",
+    "active_ingredients",
+    "warnings",
+    "directions",
+    "expiry_date",
+)
 
+LABEL_JSON_SPEC = """
 Return ONLY a JSON object in this exact format, no other text:
 {
   "drug_name": "",
@@ -50,10 +56,27 @@ Return ONLY a JSON object in this exact format, no other text:
   "directions": "",
   "expiry_date": ""
 }
-"""
+""".strip()
 
+GEMINI_VISION_INSTRUCTION = f"""
+You are reading a medicine package label from a photo (e.g. bottle, box, blister).
+Extract the following fields exactly as printed on the label.
+If a field is not visible or not present, use an empty string.
 
-# OpenCV 4.x Python uses ADAPTIVE_THRESH_GAUSSIAN_C; very old tutorials used ADAPTIVE_GAUSSIAN_C.
+{LABEL_JSON_SPEC}
+""".strip()
+
+GEMINI_OCR_TEXT_INSTRUCTION = f"""
+You are given raw OCR text from a flat medicine label (may have line breaks and noise).
+Infer the same structured fields as a human would from the label text; do not invent text
+that is not supported by the OCR. If a field cannot be determined from the OCR, use an empty string.
+
+{LABEL_JSON_SPEC}
+""".strip()
+
+PATH_FLAT_PIPELINE = "paddleocr"
+PATH_VISION_PIPELINE = "gemini_vision"
+
 _CV_ADAPTIVE_GAUSSIAN = getattr(
     cv2, "ADAPTIVE_THRESH_GAUSSIAN_C", getattr(cv2, "ADAPTIVE_GAUSSIAN_C", 1)
 )
@@ -238,12 +261,31 @@ class OCRResult:
     def passed_hallucination_check(self) -> bool:
         return len(self.hallucination_flags) == 0
 
+    def to_public_dict(self) -> dict[str, Any]:
+        """JSON-ready payload: clinical fields + provenance (same for flat and cylindrical)."""
+        base: dict[str, Any] = {k: getattr(self, k) for k in LABEL_SCHEMA_KEYS}
+        base["raw_text"] = self.raw_text
+        base["path_used"] = self.path_used
+        base["confidence"] = self.confidence
+        base["hallucination_flags"] = list(self.hallucination_flags)
+        return base
 
-def run_path_a(image_path: str) -> OCRResult:
+    def to_json(self, **json_kwargs: Any) -> str:
+        return json.dumps(self.to_public_dict(), **json_kwargs)
+
+
+def _label_fields_from_dict(data: dict[str, Any]) -> dict[str, str]:
+    return {k: str(data.get(k, "") or "").strip() for k in LABEL_SCHEMA_KEYS}
+
+
+def run_path_a(
+    image_path: str,
+    api_key: Optional[str] = None,
+    *,
+    structure_with_gemini: bool = True,
+) -> OCRResult:
     """
-    Path A — PaddleOCR for flat labels (boxes, blister packs, cream tubes).
-    Returns ``OCRResult`` with ``raw_text`` joined from detected lines; structured
-    fields stay empty until a later extraction step (e.g. Gemini on text).
+    Path A — PaddleOCR, then optional Gemini text pass for the same JSON fields as Path B.
     """
     img = cv2.imread(image_path)
     if img is None:
@@ -252,14 +294,42 @@ def run_path_a(image_path: str) -> OCRResult:
     lines = engine.run(img)
     raw_text = "\n".join(str(line["text"]) for line in lines)
     confs = [float(line["confidence"]) for line in lines]
-    conf = sum(confs) / len(confs) if confs else 0.0
-    return OCRResult(raw_text=raw_text, path_used="paddleocr", confidence=conf)
+    paddle_conf = sum(confs) / len(confs) if confs else 0.0
+
+    key = (api_key or os.getenv("GEMINI_API_KEY", "")).strip()
+    if not structure_with_gemini or not key:
+        flags: list[str] = []
+        if structure_with_gemini and not key:
+            flags.append("structured_extraction_skipped_no_gemini_key")
+        return OCRResult(
+            raw_text=raw_text,
+            path_used=PATH_FLAT_PIPELINE,
+            confidence=paddle_conf,
+            hallucination_flags=flags,
+        )
+
+    try:
+        struct_raw = _call_gemini_structure_from_ocr_text(raw_text, key)
+    except Exception as e:
+        logger.warning("Gemini structuring failed for flat OCR: %s", e)
+        return OCRResult(
+            raw_text=raw_text,
+            path_used=PATH_FLAT_PIPELINE,
+            confidence=paddle_conf * 0.5,
+            hallucination_flags=["structured_extraction_failed"],
+        )
+
+    result = _parse_structured_json_to_result(
+        struct_raw,
+        path_used=PATH_FLAT_PIPELINE,
+        raw_text=raw_text,
+        base_confidence=min(0.85, max(0.4, paddle_conf)),
+    )
+    return _check_hallucinations(result)
 
 
 def run_path_b(image_path: str, api_key: Optional[str] = None) -> OCRResult:
-    """
-    Path B — Gemini Vision for cylindrical bottles.
-    """
+    """Path B — Gemini Vision for cylindrical bottles."""
     key = api_key or os.getenv("GEMINI_API_KEY", "")
     if not key:
         raise ValueError(
@@ -268,8 +338,13 @@ def run_path_b(image_path: str, api_key: Optional[str] = None) -> OCRResult:
         )
 
     image_b64, mime_type = _encode_image(image_path)
-    raw_response = _call_gemini(image_b64, mime_type, key)
-    result = _parse_gemini_response(raw_response)
+    raw_response = _call_gemini_vision(image_b64, mime_type, key)
+    result = _parse_structured_json_to_result(
+        raw_response,
+        path_used=PATH_VISION_PIPELINE,
+        raw_text=raw_response,
+        base_confidence=0.9,
+    )
     result = _check_hallucinations(result)
 
     return result
@@ -294,73 +369,72 @@ def _encode_image(image_path: str) -> tuple[str, str]:
     return image_b64, mime_type
 
 
-def _call_gemini(image_b64: str, mime_type: str, api_key: str) -> str:
-    """Send image + prompt to Gemini 2.0 Flash, return raw text response."""
-    payload = {
-        "contents": [
-            {
-                "parts": [
-                    {
-                        "inline_data": {
-                            "mime_type": mime_type,
-                            "data": image_b64,
-                        }
-                    },
-                    {"text": GEMINI_PROMPT},
-                ]
-            }
-        ]
-    }
-
+def _gemini_generate(parts: list[dict[str, Any]], api_key: str) -> str:
+    payload = {"contents": [{"parts": parts}]}
     resp = requests.post(
         GEMINI_API_URL,
         params={"key": api_key},
         json=payload,
-        timeout=30,
+        timeout=60,
     )
-
     if resp.status_code != 200:
         raise RuntimeError(
             f"Gemini API error {resp.status_code}: {resp.text[:300]}"
         )
-
     data = resp.json()
-
     try:
         return data["candidates"][0]["content"]["parts"][0]["text"]
     except (KeyError, IndexError) as e:
         raise RuntimeError(f"Unexpected Gemini response shape: {e}\n{data}")
 
 
-def _parse_gemini_response(raw: str) -> OCRResult:
-    """Parse Gemini's text response into an OCRResult."""
-    cleaned = re.sub(r"```(?:json)?\s*", "", raw).strip().strip("`").strip()
+def _call_gemini_vision(image_b64: str, mime_type: str, api_key: str) -> str:
+    parts = [
+        {
+            "inline_data": {
+                "mime_type": mime_type,
+                "data": image_b64,
+            }
+        },
+        {"text": GEMINI_VISION_INSTRUCTION},
+    ]
+    return _gemini_generate(parts, api_key)
 
+
+def _call_gemini_structure_from_ocr_text(ocr_text: str, api_key: str) -> str:
+    body = f"{GEMINI_OCR_TEXT_INSTRUCTION}\n\n--- OCR ---\n{ocr_text}\n---"
+    return _gemini_generate([{"text": body}], api_key)
+
+
+def _parse_structured_json_to_result(
+    raw: str,
+    *,
+    path_used: str,
+    raw_text: str,
+    base_confidence: float,
+) -> OCRResult:
+    cleaned = re.sub(r"```(?:json)?\s*", "", raw).strip().strip("`").strip()
     try:
         data = json.loads(cleaned)
+        fields = _label_fields_from_dict(data)
         return OCRResult(
-            drug_name=data.get("drug_name", "").strip(),
-            dosage=data.get("dosage", "").strip(),
-            active_ingredients=data.get("active_ingredients", "").strip(),
-            warnings=data.get("warnings", "").strip(),
-            directions=data.get("directions", "").strip(),
-            expiry_date=data.get("expiry_date", "").strip(),
-            raw_text=raw,
-            path_used="gemini_vision",
-            confidence=0.9,
+            **fields,
+            raw_text=raw_text,
+            path_used=path_used,
+            confidence=base_confidence,
         )
     except json.JSONDecodeError:
         logger.warning("Gemini returned non-JSON response: %s", raw[:200])
         return OCRResult(
-            raw_text=raw,
-            path_used="gemini_vision",
-            confidence=0.3,
+            raw_text=raw_text,
+            path_used=path_used,
+            confidence=min(0.35, base_confidence),
             hallucination_flags=["response_not_json"],
         )
 
 
 def _check_hallucinations(result: OCRResult) -> OCRResult:
-    """Sanity checks on what Gemini returned to catch hallucinated fields."""
+    """Sanity checks on structured fields."""
     flags = list(result.hallucination_flags)
 
     if not result.drug_name.strip():
@@ -414,16 +488,24 @@ def _check_hallucinations(result: OCRResult) -> OCRResult:
     return result
 
 
-def run_ocr(image_path: str, packaging_type: str) -> OCRResult:
+def run_ocr(
+    image_path: str,
+    packaging_type: str,
+    *,
+    api_key: Optional[str] = None,
+    structure_flat: bool = True,
+) -> OCRResult:
     """
-    Main entry point called by the rest of the pipeline.
-
-    packaging_type: "flat" → Path A (PaddleOCR); "cylindrical" → Path B (Gemini Vision).
+    packaging_type: "flat" → Path A; "cylindrical" → Path B (Gemini Vision).
     """
     if packaging_type == "cylindrical":
-        return run_path_b(image_path)
+        return run_path_b(image_path, api_key=api_key)
     if packaging_type == "flat":
-        return run_path_a(image_path)
+        return run_path_a(
+            image_path,
+            api_key=api_key,
+            structure_with_gemini=structure_flat,
+        )
     raise ValueError(
         f"Unknown packaging_type '{packaging_type}'. "
         "Expected 'flat' or 'cylindrical'."
