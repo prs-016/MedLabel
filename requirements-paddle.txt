@@ -1,0 +1,13 @@
+# PaddlePaddle runtime (required for `paddleocr` to import — PyPI `paddleocr` does NOT pull this in).
+# Install AFTER requirements.txt, using the same venv:
+#
+#   source .venv/bin/activate   # or your venv
+#   python -m pip install -r requirements-paddle.txt
+#
+# macOS / Linux CPU (official wheel index). For other OS/arch see:
+#   https://www.paddlepaddle.org.cn/install/quick
+#   https://www.paddlepaddle.org.cn/documentation/docs/en/install/pip/macos-pip_en.html
+
+paddlepaddle==3.3.0
+--index-url https://www.paddlepaddle.org.cn/packages/stable/cpu/
+--extra-index-url https://pypi.org/simple
