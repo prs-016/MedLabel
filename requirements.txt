@@ -1,3 +1,11 @@
+# Path A (vision): OpenCV + PaddleOCR
+numpy>=1.21,<3
+opencv-python-headless>=4.8,<5
+
+# PaddleOCR does NOT install PaddlePaddle (`import paddle`). Install it second:
+#   python -m pip install -r requirements-paddle.txt
+# See https://github.com/PaddlePaddle/PaddleOCR/blob/release/2.7/doc/doc_en/installation_en.md
+paddleocr>=2.7,<3
 # Environment for MedLabel (optimized for Apple Silicon / M4 Pro)
 
 # Computer Vision & OCR
