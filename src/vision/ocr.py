@@ -4,7 +4,7 @@ import base64
 import logging
 import json
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, Literal
 import requests
 
 from dotenv import load_dotenv
@@ -64,14 +64,234 @@ class OCRResult:
         return len(self.hallucination_flags) == 0
 
 
-# ── Path A stub ────────────────────────────────────────────────────────────────
+# ── Path A — PaddleOCR ────────────────────────────────────────────────────────
+
+_CONFIDENCE_THRESHOLD = 0.65
+
+# Common dosage units to anchor extraction
+_DOSAGE_UNITS = re.compile(
+    r"\d+(?:\.\d+)?\s*(?:mg|mcg|g|ml|l|iu|%|mg/ml|mg/g|units?)\b",
+    re.IGNORECASE,
+)
+
+# Patterns that typically mark the first line of a drug name block
+_DRUG_NAME_STOP = re.compile(
+    r"^\s*(?:lot|exp|ndc|rx|mfg|dist|manufactured|directions|warning|"
+    r"storage|keep|shake|refills?|pharmacist|dispense|quantity|qty|"
+    r"patient|dr\b|dr\.)\b",
+    re.IGNORECASE,
+)
+
+
+class PathAOCR:
+    """
+    PaddleOCR wrapper for flat labels (boxes, blister packs, cream tubes).
+
+    Usage
+    -----
+    ocr = PathAOCR()
+    lines = ocr.run(cv2_image)
+    # lines → [{"text": "...", "confidence": 0.98}, ...]
+    """
+
+    def __init__(self, lang: str = "en") -> None:
+        try:
+            from paddleocr import PaddleOCR  # type: ignore
+        except ImportError as exc:
+            raise ImportError(
+                "PaddleOCR is not installed. "
+                "Run: pip install paddleocr && pip install -r requirements-paddle.txt"
+            ) from exc
+        # use_textline_orientation replaces use_angle_cls in PaddleOCR 3.x
+        self._ocr = PaddleOCR(use_textline_orientation=True, lang=lang)
+
+    # ── public ────────────────────────────────────────────────────────────────
+
+    def run(
+        self,
+        img,  # np.ndarray (BGR, from cv2.imread)
+        *,
+        preprocess: bool = True,
+        auto_page_rotate: bool = False,
+        page_rotate_mode: Literal["heuristic", "ocr", "none"] = "heuristic",
+        min_confidence: float = 0.0,
+    ) -> list[dict]:
+        """
+        Run OCR on a cv2 BGR image.
+
+        Returns
+        -------
+        list of {"text": str, "confidence": float}, ordered top-to-bottom.
+        Lines with confidence < min_confidence are excluded.
+        """
+        if preprocess:
+            img = _preprocess_image(img)
+
+        if auto_page_rotate and page_rotate_mode != "none":
+            img = _auto_rotate(img, mode=page_rotate_mode)
+
+        # PaddleOCR 3.x: predict() returns a list of result objects;
+        # each converts to a dict with rec_texts / rec_scores arrays.
+        paddle_results = self._ocr.predict(img)
+
+        lines: list[dict] = []
+        for page_result in (paddle_results or []):
+            d = dict(page_result)
+            texts  = d.get("rec_texts", []) or []
+            scores = d.get("rec_scores", []) or []
+            for text, conf in zip(texts, scores):
+                if float(conf) >= min_confidence and text.strip():
+                    lines.append({"text": text.strip(), "confidence": float(conf)})
+
+        return lines
+
+
+# ── Path A entry point ────────────────────────────────────────────────────────
 
 def run_path_a(image_path: str) -> OCRResult:
     """
     Path A — PaddleOCR for flat labels (boxes, blister packs, cream tubes).
-    To be implemented with PaddleOCR + OpenCV preprocessing.
+
+    Returns an OCRResult.  If mean confidence across all detected lines is
+    below 75 %, the 'reupload_required' flag is set in hallucination_flags
+    and the caller (or UI) should ask the user to retake the photo.
     """
-    raise NotImplementedError("Path A (PaddleOCR) not yet implemented.")
+    import cv2
+
+    img = cv2.imread(image_path)
+    if img is None:
+        raise ValueError(f"Cannot read image file: {image_path!r}")
+
+    ocr = PathAOCR()
+    lines = ocr.run(img, preprocess=True)
+
+    if not lines:
+        return OCRResult(
+            path_used="paddle_ocr",
+            confidence=0.0,
+            hallucination_flags=["no_text_detected", "reupload_required"],
+        )
+
+    mean_conf = sum(ln["confidence"] for ln in lines) / len(lines)
+    all_text = "\n".join(ln["text"] for ln in lines)
+
+    if mean_conf < _CONFIDENCE_THRESHOLD:
+        logger.warning(
+            "Path A confidence %.2f < %.2f — requesting reupload for %s",
+            mean_conf, _CONFIDENCE_THRESHOLD, image_path,
+        )
+        return OCRResult(
+            raw_text=all_text,
+            path_used="paddle_ocr",
+            confidence=mean_conf,
+            hallucination_flags=["confidence_too_low", "reupload_required"],
+        )
+
+    drug_name = _extract_drug_name(lines)
+    dosage    = _extract_dosage(lines)
+
+    return OCRResult(
+        drug_name=drug_name,
+        dosage=dosage,
+        raw_text=all_text,
+        path_used="paddle_ocr",
+        confidence=mean_conf,
+    )
+
+
+# ── Preprocessing helpers ─────────────────────────────────────────────────────
+
+def _preprocess_image(img):
+    """CLAHE contrast enhancement → adaptive threshold → return BGR."""
+    import cv2
+    import numpy as np
+
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    enhanced = clahe.apply(gray)
+
+    # Adaptive threshold sharpens text against varied backgrounds
+    thresh = cv2.adaptiveThreshold(
+        enhanced, 255,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY,
+        blockSize=31,
+        C=10,
+    )
+
+    return cv2.cvtColor(thresh, cv2.COLOR_GRAY2BGR)
+
+
+def _auto_rotate(img, *, mode: str = "heuristic"):
+    """
+    Rotate the whole image so text reads left-to-right.
+
+    heuristic: choose 0 or 90 based on aspect ratio (landscape → 0, portrait
+               with tall ratio → rotate 90).
+    ocr:       run PaddleOCR twice (0° and 90°), pick the angle that gives
+               more detected text — slower but more accurate.
+    """
+    import cv2
+    import numpy as np
+
+    h, w = img.shape[:2]
+
+    if mode == "heuristic":
+        if h > w * 1.3:          # noticeably taller than wide → rotate
+            return cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
+        return img
+
+    if mode == "ocr":
+        from paddleocr import PaddleOCR  # type: ignore
+        _tmp = PaddleOCR(use_textline_orientation=False, lang="en")
+
+        def _count(candidate):
+            res = _tmp.predict(candidate) or []
+            return sum(len(dict(r).get("rec_texts") or []) for r in res)
+
+        rotated = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
+        return rotated if _count(rotated) > _count(img) else img
+
+    return img
+
+
+# ── Field extraction helpers ──────────────────────────────────────────────────
+
+def _extract_drug_name(lines: list[dict]) -> str:
+    """
+    Heuristic: drug name is the first high-confidence line near the top that
+    is NOT a metadata keyword.  Lines containing ONLY a dosage unit are still
+    accepted — the drug name and dosage often appear together (e.g.
+    "AMOXICILLIN 500 MG").
+    """
+    for ln in lines:
+        text = ln["text"]
+        if (
+            ln["confidence"] >= 0.80
+            and len(text) >= 3
+            and not _DRUG_NAME_STOP.match(text)
+        ):
+            return text
+    return ""
+
+
+def _extract_dosage(lines: list[dict]) -> str:
+    """
+    Return the dosage expression.  The drug name line often contains it
+    (e.g. "AMOXICILLIN 500 MG") so we extract just the matched substring
+    rather than the whole line when it would duplicate the drug name.
+    """
+    drug_name = _extract_drug_name(lines)
+    for ln in lines:
+        m = _DOSAGE_UNITS.search(ln["text"])
+        if m:
+            text = ln["text"].strip()
+            # If this line IS the drug name, return only the dosage portion
+            if text == drug_name:
+                return m.group(0).strip()
+            return text
+    return ""
 
 
 # ── Path B — Gemini Vision ─────────────────────────────────────────────────────
