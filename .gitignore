@@ -48,3 +48,7 @@ Thumbs.db
 
 # Jupyter
 .ipynb_checkpoints/
+drug_db/
+drug_db_export.json
+venv/
+*.HEIC
