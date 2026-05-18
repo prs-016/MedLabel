@@ -12,41 +12,37 @@ FDA_EVENT_BASE = "https://api.fda.gov/drug/event.json"
 
 LABEL_SECTIONS = [
     "dosage_and_administration",
-    "warnings",
+    "warnings_and_cautions",
     "drug_interactions",
     "indications_and_usage",
-    "active_ingredient",
-    "inactive_ingredient",
-    "purpose",
-    "keep_out_of_reach_of_children",
-    "stop_use",
-    "ask_doctor",
-    "ask_doctor_or_pharmacist",
-    "pregnancy_or_breast_feeding",
-    "overdosage",
     "adverse_reactions",
+    "overdosage",
+    "contraindications",
+    "boxed_warning",
+    "use_in_specific_populations",
+    "pregnancy",
+    "mechanism_of_action",
+    "clinical_pharmacology",
 ]
 
 
 @dataclass
 class DrugLabel:
-    brand_name:                    str = ""
-    generic_name:                  str = ""
-    rxcui:                         str = ""
-    dosage_and_administration:     list[str] = field(default_factory=list)
-    warnings:                      list[str] = field(default_factory=list)
-    drug_interactions:             list[str] = field(default_factory=list)
-    indications_and_usage:         list[str] = field(default_factory=list)
-    active_ingredient:             list[str] = field(default_factory=list)
-    inactive_ingredient:           list[str] = field(default_factory=list)
-    purpose:                       list[str] = field(default_factory=list)
-    keep_out_of_reach_of_children: list[str] = field(default_factory=list)
-    stop_use:                      list[str] = field(default_factory=list)
-    ask_doctor:                    list[str] = field(default_factory=list)
-    ask_doctor_or_pharmacist:      list[str] = field(default_factory=list)
-    pregnancy_or_breast_feeding:   list[str] = field(default_factory=list)
-    overdosage:                    list[str] = field(default_factory=list)
-    adverse_reactions:             list[str] = field(default_factory=list)
+    brand_name:                  str = ""
+    generic_name:                str = ""
+    rxcui:                       str = ""
+    dosage_and_administration:   list[str] = field(default_factory=list)
+    warnings_and_cautions:       list[str] = field(default_factory=list)
+    drug_interactions:           list[str] = field(default_factory=list)
+    indications_and_usage:       list[str] = field(default_factory=list)
+    adverse_reactions:           list[str] = field(default_factory=list)
+    overdosage:                  list[str] = field(default_factory=list)
+    contraindications:           list[str] = field(default_factory=list)
+    boxed_warning:               list[str] = field(default_factory=list)
+    use_in_specific_populations: list[str] = field(default_factory=list)
+    pregnancy:                   list[str] = field(default_factory=list)
+    mechanism_of_action:         list[str] = field(default_factory=list)
+    clinical_pharmacology:       list[str] = field(default_factory=list)
 
     def to_chunks(self) -> list[dict]:
         chunks = []
@@ -100,8 +96,8 @@ class OpenFDAClient:
 
     def get_label(self, drug_name: str) -> Optional[DrugLabel]:
         searches = [
-            f'openfda.generic_name:"{drug_name}"',
-            f'openfda.brand_name:"{drug_name}"',
+            f'openfda.generic_name:{drug_name}',
+            f'openfda.brand_name:{drug_name}',
         ]
         for search in searches:
             params = self._build_params({"search": search, "limit": 1})
