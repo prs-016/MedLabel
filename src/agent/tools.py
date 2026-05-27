@@ -13,9 +13,10 @@ from typing import TYPE_CHECKING, Optional
 
 from agent.interaction_check import interaction_check as run_interaction_check
 
+from api.openfda import OpenFDAClient
+
 if TYPE_CHECKING:
     from langchain.agents import Tool
-from api.openfda import OpenFDAClient
 
 
 def vector_search(query: str) -> str:

@@ -115,6 +115,15 @@ export PYTHONPATH=src
 python3 scripts/test_interaction_check.py --scanned acetaminophen --query ibuprofen
 ```
 
+**Full demo (upload image + chat):**
+
+```bash
+export PYTHONPATH=src
+streamlit run app/streamlit_app.py
+```
+
+Or CLI: `python3 scripts/demo_cli.py -i data/raw/images/sample_ocr_test.png --flat --question "Can I take this with ibuprofen?"`
+
 Without CSVs, a small built-in demo pair set is used for development.
 
 ---
