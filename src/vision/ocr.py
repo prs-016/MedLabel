@@ -5,24 +5,16 @@ import logging
 import json
 from dataclasses import dataclass, field
 from typing import Optional, Literal
-import requests
 
 from dotenv import load_dotenv
-load_dotenv()
 
-load_dotenv()  # this actually reads the .env file
-key = os.getenv("GEMINI_API_KEY")
+from api.xai_client import require_xai_api_key, vision_completion
+
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-
-# TO:
-GEMINI_API_URL = (
-    "https://generativelanguage.googleapis.com/v1beta/models/"
-    "gemini-2.5-flash:generateContent"
-)
-
-GEMINI_PROMPT = """
+PATH_B_VISION_PROMPT = """
 You are reading the label on a curved medicine bottle.
 Extract the following fields exactly as printed.
 If a field is not visible, use an empty string.
@@ -45,7 +37,7 @@ Return ONLY a JSON object in this exact format, no other text:
 class OCRResult:
     """
     Structured output from either OCR path.
-    Path A (PaddleOCR) and Path B (Gemini Vision) both return this
+    Path A (PaddleOCR) and Path B (xAI Vision) both return this
     so everything downstream works the same regardless of which path ran.
     """
     drug_name:            str = ""
@@ -294,40 +286,40 @@ def _extract_dosage(lines: list[dict]) -> str:
     return ""
 
 
-# ── Path B — Gemini Vision ─────────────────────────────────────────────────────
+# ── Path B — xAI Vision ────────────────────────────────────────────────────────
 
 def run_path_b(image_path: str, api_key: Optional[str] = None) -> OCRResult:
     """
-    Path B — Gemini Vision for cylindrical bottles.
+    Path B — xAI vision for cylindrical bottles.
 
-    Takes a photo of a curved bottle, sends it to Gemini 2.0 Flash,
+    Takes a photo of a curved bottle, sends it to the xAI vision model,
     parses the structured JSON response, then runs hallucination checks.
 
     Parameters
     ----------
     image_path : path to the bottle photo on disk
-    api_key    : Gemini API key — falls back to GEMINI_API_KEY in .env
+    api_key    : xAI API key — falls back to XAI_API_KEY in .env
 
     Returns
     -------
-    OCRResult with path_used = "gemini_vision"
+    OCRResult with path_used = "xai_vision"
     """
-    key = api_key or os.getenv("GEMINI_API_KEY", "")
-    if not key:
-        raise ValueError(
-            "No Gemini API key found. "
-            "Add GEMINI_API_KEY=your_key to your .env file."
-        )
+    key = require_xai_api_key(api_key)
 
     image_b64, mime_type = _encode_image(image_path)
-    raw_response         = _call_gemini(image_b64, mime_type, key)
-    result               = _parse_gemini_response(raw_response)
-    result               = _check_hallucinations(result)
+    raw_response = vision_completion(
+        image_b64,
+        mime_type,
+        PATH_B_VISION_PROMPT,
+        api_key=key,
+    )
+    result = _parse_vision_response(raw_response)
+    result = _check_hallucinations(result)
 
     return result
 
 
-# ── Gemini helpers ─────────────────────────────────────────────────────────────
+# ── Path B vision helpers ─────────────────────────────────────────────────────
 
 def _encode_image(image_path: str) -> tuple[str, str]:
     """Read image from disk, return (base64_string, mime_type)."""
@@ -348,50 +340,10 @@ def _encode_image(image_path: str) -> tuple[str, str]:
     return image_b64, mime_type
 
 
-def _call_gemini(image_b64: str, mime_type: str, api_key: str) -> str:
-    """Send image + prompt to Gemini 2.0 Flash, return raw text response."""
-    payload = {
-        "contents": [
-            {
-                "parts": [
-                    {
-                        "inline_data": {
-                            "mime_type": mime_type,
-                            "data": image_b64,
-                        }
-                    },
-                    {
-                        "text": GEMINI_PROMPT
-                    }
-                ]
-            }
-        ]
-    }
-
-    resp = requests.post(
-        GEMINI_API_URL,
-        params={"key": api_key},
-        json=payload,
-        timeout=30,
-    )
-
-    if resp.status_code != 200:
-        raise RuntimeError(
-            f"Gemini API error {resp.status_code}: {resp.text[:300]}"
-        )
-
-    data = resp.json()
-
-    try:
-        return data["candidates"][0]["content"]["parts"][0]["text"]
-    except (KeyError, IndexError) as e:
-        raise RuntimeError(f"Unexpected Gemini response shape: {e}\n{data}")
-
-
-def _parse_gemini_response(raw: str) -> OCRResult:
+def _parse_vision_response(raw: str) -> OCRResult:
     """
-    Parse Gemini's text response into an OCRResult.
-    Strips markdown code fences if Gemini wrapped the JSON in them.
+    Parse VLM JSON text response into an OCRResult.
+    Strips markdown code fences if the model wrapped JSON in them.
     """
     cleaned = re.sub(r"```(?:json)?\s*", "", raw).strip().strip("`").strip()
 
@@ -405,14 +357,14 @@ def _parse_gemini_response(raw: str) -> OCRResult:
             directions=         data.get("directions", "").strip(),
             expiry_date=        data.get("expiry_date", "").strip(),
             raw_text=           raw,
-            path_used=          "gemini_vision",
+            path_used=          "xai_vision",
             confidence=         0.9,
         )
     except json.JSONDecodeError:
-        logger.warning("Gemini returned non-JSON response: %s", raw[:200])
+        logger.warning("Vision model returned non-JSON response: %s", raw[:200])
         return OCRResult(
             raw_text=            raw,
-            path_used=           "gemini_vision",
+            path_used=           "xai_vision",
             confidence=          0.3,
             hallucination_flags= ["response_not_json"],
         )
@@ -422,7 +374,7 @@ def _parse_gemini_response(raw: str) -> OCRResult:
 
 def _check_hallucinations(result: OCRResult) -> OCRResult:
     """
-    Sanity checks on what Gemini returned to catch hallucinated fields.
+    Sanity checks on VLM output to catch hallucinated fields.
 
     Checks:
       1. drug_name must not be empty
@@ -504,7 +456,7 @@ def run_ocr(image_path: str, packaging_type: str) -> OCRResult:
     ----------
     image_path     : path to the image file
     packaging_type : "flat"         → Path A (PaddleOCR)
-                     "cylindrical"  → Path B (Gemini Vision)
+                     "cylindrical"  → Path B (xAI Vision)
     """
     if packaging_type == "cylindrical":
         return run_path_b(image_path)

@@ -63,7 +63,7 @@ with st.sidebar:
     packaging = st.radio(
         "Label type",
         options=["flat", "cylindrical"],
-        format_func=lambda x: "Flat box / blister (PaddleOCR)" if x == "flat" else "Bottle (Gemini Vision)",
+        format_func=lambda x: "Flat box / blister (PaddleOCR)" if x == "flat" else "Bottle (xAI Vision)",
         help="Path A for flat packaging, Path B for curved bottles.",
     )
     st.divider()
