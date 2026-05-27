@@ -9,10 +9,10 @@ opencv-python-headless>=4.8,<5
 pillow                  # Image handling
 numpy>=1.21,<3
 
-# AI & LLM
-google-generativeai>=0.3.0  # Gemini 2.0 Flash
-langchain>=0.1.0            # Agentic framework
-langchain-google-genai>=1.0.0
+# AI & LLM (xAI — OpenAI-compatible API)
+openai>=1.0.0
+langchain>=0.1.0
+langchain-openai>=0.1.0
 chromadb>=0.4.0             # Vector DB
 sentence-transformers>=2.2.0  # BGE-M3 local embeddings
 
@@ -22,3 +22,4 @@ python-dotenv           # API Key management
 requests                # API handling
 pandas                  # Data handling
 pydantic>=2.0.0         # Data models/validation
+roboflow>=1.1.0         # Download labeled dataset (scripts/download_roboflow_dataset.py)

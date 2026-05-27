@@ -1,8 +1,8 @@
 """
-OCR routes for MedLabel: Path A (PaddleOCR + OpenCV) and Path B (Gemini Vision).
+OCR routes for MedLabel: Path A (PaddleOCR + OpenCV) and Path B (xAI vision).
 
 Both paths target the same label JSON schema (``LABEL_SCHEMA_KEYS``). Path B fills it
-from image + VLM; Path A runs Paddle, then optionally Gemini on the OCR text so fields
+from image + xAI VLM; Path A runs Paddle, then optionally xAI on the OCR text so fields
 match. Use ``OCRResult.to_public_dict()`` at API boundaries for a stable JSON shape.
 """
 
@@ -18,8 +18,9 @@ from typing import Any, Optional
 
 import cv2
 import numpy as np
-import requests
 from dotenv import load_dotenv
+
+from api.xai_client import get_xai_api_key, require_xai_api_key, text_completion, vision_completion
 
 from .orientation import (
     apply_rotation,
@@ -31,11 +32,6 @@ from .orientation import (
 load_dotenv()
 
 logger = logging.getLogger(__name__)
-
-GEMINI_API_URL = (
-    "https://generativelanguage.googleapis.com/v1beta/models/"
-    "gemini-2.5-flash:generateContent"
-)
 
 LABEL_SCHEMA_KEYS: tuple[str, ...] = (
     "drug_name",
@@ -58,7 +54,7 @@ Return ONLY a JSON object in this exact format, no other text:
 }
 """.strip()
 
-GEMINI_VISION_INSTRUCTION = f"""
+VLM_VISION_INSTRUCTION = f"""
 You are reading a medicine package label from a photo (e.g. bottle, box, blister).
 Extract the following fields exactly as printed on the label.
 If a field is not visible or not present, use an empty string.
@@ -66,7 +62,7 @@ If a field is not visible or not present, use an empty string.
 {LABEL_JSON_SPEC}
 """.strip()
 
-GEMINI_OCR_TEXT_INSTRUCTION = f"""
+VLM_OCR_TEXT_INSTRUCTION = f"""
 You are given raw OCR text from a flat medicine label (may have line breaks and noise).
 Infer the same structured fields as a human would from the label text; do not invent text
 that is not supported by the OCR. If a field cannot be determined from the OCR, use an empty string.
@@ -75,7 +71,7 @@ that is not supported by the OCR. If a field cannot be determined from the OCR, 
 """.strip()
 
 PATH_FLAT_PIPELINE = "paddleocr"
-PATH_VISION_PIPELINE = "gemini_vision"
+PATH_VISION_PIPELINE = "xai_vision"
 
 _CV_ADAPTIVE_GAUSSIAN = getattr(
     cv2, "ADAPTIVE_THRESH_GAUSSIAN_C", getattr(cv2, "ADAPTIVE_GAUSSIAN_C", 1)
@@ -242,7 +238,7 @@ def estimate_page_rotation(image_bgr: np.ndarray) -> int:
 class OCRResult:
     """
     Structured output from either OCR path.
-    Path A (PaddleOCR) and Path B (Gemini Vision) both return this
+    Path A (PaddleOCR) and Path B (xAI vision) both return this
     so everything downstream works the same regardless of which path ran.
     """
 
@@ -282,11 +278,15 @@ def run_path_a(
     image_path: str,
     api_key: Optional[str] = None,
     *,
-    structure_with_gemini: bool = True,
+    structure_with_vlm: bool = True,
+    structure_with_gemini: Optional[bool] = None,  # deprecated alias
 ) -> OCRResult:
     """
-    Path A — PaddleOCR, then optional Gemini text pass for the same JSON fields as Path B.
+    Path A — PaddleOCR, then optional xAI text pass for the same JSON fields as Path B.
     """
+    if structure_with_gemini is not None:
+        structure_with_vlm = structure_with_gemini
+
     img = cv2.imread(image_path)
     if img is None:
         raise ValueError(f"Could not read image: {image_path}")
@@ -296,11 +296,11 @@ def run_path_a(
     confs = [float(line["confidence"]) for line in lines]
     paddle_conf = sum(confs) / len(confs) if confs else 0.0
 
-    key = (api_key or os.getenv("GEMINI_API_KEY", "")).strip()
-    if not structure_with_gemini or not key:
+    key = (api_key or get_xai_api_key()).strip()
+    if not structure_with_vlm or not key:
         flags: list[str] = []
-        if structure_with_gemini and not key:
-            flags.append("structured_extraction_skipped_no_gemini_key")
+        if structure_with_vlm and not key:
+            flags.append("structured_extraction_skipped_no_xai_key")
         return OCRResult(
             raw_text=raw_text,
             path_used=PATH_FLAT_PIPELINE,
@@ -309,9 +309,10 @@ def run_path_a(
         )
 
     try:
-        struct_raw = _call_gemini_structure_from_ocr_text(raw_text, key)
+        prompt = f"{VLM_OCR_TEXT_INSTRUCTION}\n\n--- OCR ---\n{raw_text}\n---"
+        struct_raw = text_completion(prompt, api_key=key)
     except Exception as e:
-        logger.warning("Gemini structuring failed for flat OCR: %s", e)
+        logger.warning("xAI structuring failed for flat OCR: %s", e)
         return OCRResult(
             raw_text=raw_text,
             path_used=PATH_FLAT_PIPELINE,
@@ -329,16 +330,16 @@ def run_path_a(
 
 
 def run_path_b(image_path: str, api_key: Optional[str] = None) -> OCRResult:
-    """Path B — Gemini Vision for cylindrical bottles."""
-    key = api_key or os.getenv("GEMINI_API_KEY", "")
-    if not key:
-        raise ValueError(
-            "No Gemini API key found. "
-            "Add GEMINI_API_KEY=your_key to your .env file."
-        )
+    """Path B — xAI vision for cylindrical bottles."""
+    key = require_xai_api_key(api_key)
 
     image_b64, mime_type = _encode_image(image_path)
-    raw_response = _call_gemini_vision(image_b64, mime_type, key)
+    raw_response = vision_completion(
+        image_b64,
+        mime_type,
+        VLM_VISION_INSTRUCTION,
+        api_key=key,
+    )
     result = _parse_structured_json_to_result(
         raw_response,
         path_used=PATH_VISION_PIPELINE,
@@ -369,43 +370,6 @@ def _encode_image(image_path: str) -> tuple[str, str]:
     return image_b64, mime_type
 
 
-def _gemini_generate(parts: list[dict[str, Any]], api_key: str) -> str:
-    payload = {"contents": [{"parts": parts}]}
-    resp = requests.post(
-        GEMINI_API_URL,
-        params={"key": api_key},
-        json=payload,
-        timeout=60,
-    )
-    if resp.status_code != 200:
-        raise RuntimeError(
-            f"Gemini API error {resp.status_code}: {resp.text[:300]}"
-        )
-    data = resp.json()
-    try:
-        return data["candidates"][0]["content"]["parts"][0]["text"]
-    except (KeyError, IndexError) as e:
-        raise RuntimeError(f"Unexpected Gemini response shape: {e}\n{data}")
-
-
-def _call_gemini_vision(image_b64: str, mime_type: str, api_key: str) -> str:
-    parts = [
-        {
-            "inline_data": {
-                "mime_type": mime_type,
-                "data": image_b64,
-            }
-        },
-        {"text": GEMINI_VISION_INSTRUCTION},
-    ]
-    return _gemini_generate(parts, api_key)
-
-
-def _call_gemini_structure_from_ocr_text(ocr_text: str, api_key: str) -> str:
-    body = f"{GEMINI_OCR_TEXT_INSTRUCTION}\n\n--- OCR ---\n{ocr_text}\n---"
-    return _gemini_generate([{"text": body}], api_key)
-
-
 def _parse_structured_json_to_result(
     raw: str,
     *,
@@ -424,7 +388,7 @@ def _parse_structured_json_to_result(
             confidence=base_confidence,
         )
     except json.JSONDecodeError:
-        logger.warning("Gemini returned non-JSON response: %s", raw[:200])
+        logger.warning("xAI returned non-JSON response: %s", raw[:200])
         return OCRResult(
             raw_text=raw_text,
             path_used=path_used,
@@ -496,7 +460,7 @@ def run_ocr(
     structure_flat: bool = True,
 ) -> OCRResult:
     """
-    packaging_type: "flat" → Path A; "cylindrical" → Path B (Gemini Vision).
+    packaging_type: "flat" → Path A; "cylindrical" → Path B (xAI vision).
     """
     if packaging_type == "cylindrical":
         return run_path_b(image_path, api_key=api_key)
@@ -504,7 +468,7 @@ def run_ocr(
         return run_path_a(
             image_path,
             api_key=api_key,
-            structure_with_gemini=structure_flat,
+            structure_with_vlm=structure_flat,
         )
     raise ValueError(
         f"Unknown packaging_type '{packaging_type}'. "

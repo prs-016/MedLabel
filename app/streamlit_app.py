@@ -1,7 +1,15 @@
-import streamlit as st
-import PIL.Image
 import os
+import sys
+from pathlib import Path
+
+import PIL.Image
+import streamlit as st
 from dotenv import load_dotenv
+
+# Allow `from api...` when running: streamlit run app/streamlit_app.py
+_ROOT = Path(__file__).resolve().parents[1]
+if str(_ROOT / "src") not in sys.path:
+    sys.path.insert(0, str(_ROOT / "src"))
 
 # Load stubs (Relative imports based on repo structure)
 # from src.vision.detector import YOLORouter
@@ -17,8 +25,10 @@ st.markdown("🔴 *AI can make mistakes. Always verify with the physical label o
 
 with st.sidebar:
     st.header("Settings")
-    api_key_status = "✅ Set" if os.getenv("GEMINI_API_KEY") else "❌ Missing"
-    st.write(f"Gemini API Key: {api_key_status}")
+    from api.xai_client import get_xai_api_key
+
+    api_key_status = "✅ Set" if get_xai_api_key() else "❌ Missing"
+    st.write(f"xAI API Key: {api_key_status}")
     
     st.divider()
     st.write("Current Package Class: **Detecting...**")
