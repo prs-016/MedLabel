@@ -7,6 +7,7 @@ Upload / file path → ``run_ocr`` → RxNorm-normalized drug name for the agent
 from __future__ import annotations
 
 import logging
+from typing import Optional
 from typing import Any, Literal
 
 from api.rxnorm import RxNormClient
@@ -22,7 +23,7 @@ def scan_image(image_path: str, packaging_type: PackagingType) -> OCRResult:
     return run_ocr(image_path, packaging_type)
 
 
-def resolve_scanned_drug(ocr_result: OCRResult, rxnorm: RxNormClient | None = None) -> str:
+def resolve_scanned_drug(ocr_result: OCRResult, rxnorm: Optional[RxNormClient] = None) -> str:
     """
     Best-effort generic drug name from OCR output (RxNorm when possible).
     """
