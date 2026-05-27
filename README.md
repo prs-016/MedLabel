@@ -106,6 +106,16 @@ USER: Photo of Any Medicine Packaging
 - **Primary Source (Kaggle Mirror):** [https://www.kaggle.com/datasets/thedevastator/ddinter-dataset-drug-drug-interactions](https://www.kaggle.com/datasets/thedevastator/ddinter-dataset-drug-drug-interactions) — *Use this if the official site has SSL/certificate issues.*
 - **Secondary Source (Zenodo):** [https://zenodo.org/records/5549420](https://zenodo.org/records/5549420)
 - **Official Site:** [https://ddinter2.scbdd.com](https://ddinter2.scbdd.com) — *Main reference site for data schema.*
+- Place downloaded `*.csv` files in `data/ddinter/` (see `data/ddinter/README.md`).
+
+**Test `interaction_check` locally:**
+
+```bash
+export PYTHONPATH=src
+python3 scripts/test_interaction_check.py --scanned acetaminophen --query ibuprofen
+```
+
+Without CSVs, a small built-in demo pair set is used for development.
 
 ---
 
