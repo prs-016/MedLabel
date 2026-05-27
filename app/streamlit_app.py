@@ -24,11 +24,46 @@ if str(SRC) not in sys.path:
 
 load_dotenv(ROOT / ".env")
 
-from agent.brain import MedAgent
 from agent.interaction_check import interaction_check
-from agent.tools import interaction_check as tool_interaction_check
+from agent.tools import adverse_events, interaction_check as tool_interaction_check
 from api.xai_client import get_xai_api_key
 from pipeline.scan import ocr_result_to_dict, resolve_scanned_drug, scan_image
+
+
+def _llm_status() -> str:
+    if get_xai_api_key():
+        return "xAI"
+    if __import__("os").getenv("GEMINI_API_KEY"):
+        return "Gemini"
+    return "missing"
+
+
+def _answer_question(question: str, scanned_drug: str) -> str:
+    """Answer chat using interaction_check / adverse_events tools."""
+    q_lower = question.lower()
+    interaction_hint = any(
+        w in q_lower
+        for w in ("with", "together", "combine", "interaction", "mix", "take")
+    )
+    adverse_hint = any(
+        w in q_lower
+        for w in ("side effect", "adverse", "reaction", "symptom")
+    )
+
+    if interaction_hint and scanned_drug:
+        try:
+            return tool_interaction_check(question, scanned_drug=scanned_drug)
+        except Exception as exc:
+            return interaction_check(question, scanned_drug=scanned_drug).format_for_agent()
+
+    if adverse_hint and scanned_drug:
+        return adverse_events(scanned_drug)
+
+    if scanned_drug:
+        return tool_interaction_check(question, scanned_drug=scanned_drug)
+
+    return "Analyze a label first so we know which medicine you scanned."
+
 
 st.set_page_config(page_title="MedLabel", layout="wide")
 
@@ -48,18 +83,9 @@ if "scanned_drug" not in st.session_state:
 if "chat_messages" not in st.session_state:
     st.session_state.chat_messages = []
 
-
-def _llm_status() -> str:
-    if get_xai_api_key():
-        return "xAI"
-    if __import__("os").getenv("GEMINI_API_KEY"):
-        return "Gemini"
-    return "missing"
-
-
 with st.sidebar:
     st.header("Settings")
-    st.write(f"LLM: **{_llm_status()}**")
+    st.write(f"LLM / tools: **{_llm_status()}**")
     packaging = st.radio(
         "Label type",
         options=["flat", "cylindrical"],
@@ -95,7 +121,6 @@ with col_upload:
                     st.session_state.scan_payload = payload
                     st.session_state.scanned_drug = scanned
                     st.session_state.chat_messages = []
-                    st.session_state.pop("med_agent", None)
                 except Exception as exc:
                     st.error(f"OCR failed: {exc}")
                 finally:
@@ -150,34 +175,3 @@ with col_results:
                 st.session_state.chat_messages.append(
                     {"role": "assistant", "content": reply}
                 )
-
-
-def _answer_question(question: str, scanned_drug: str) -> str:
-    """
-    Answer using interaction_check for drug-combo questions; agent for others.
-    """
-    q_lower = question.lower()
-    interaction_hint = any(
-        w in q_lower
-        for w in ("with", "together", "combine", "interaction", "mix", "take")
-    )
-
-    if interaction_hint and scanned_drug:
-        try:
-            direct = tool_interaction_check(question, scanned_drug=scanned_drug)
-            if "interaction_check error" not in direct.lower():
-                return direct
-        except Exception:
-            pass
-
-    if "med_agent" not in st.session_state or getattr(
-        st.session_state.med_agent, "scanned_drug", ""
-    ) != scanned_drug:
-        st.session_state.med_agent = MedAgent(scanned_drug=scanned_drug)
-
-    try:
-        return st.session_state.med_agent.run_query(question)
-    except Exception as exc:
-        if interaction_hint:
-            return interaction_check(question, scanned_drug=scanned_drug).format_for_agent()
-        return f"Agent error: {exc}\n\nTry rephrasing or ask a drug interaction question."

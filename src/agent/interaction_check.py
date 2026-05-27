@@ -115,15 +115,23 @@ def parse_interaction_query(
     if not q:
         raise ValueError("interaction_check requires a drug name or pair in the query.")
 
-    if scanned_drug and "|" not in q:
-        return scanned_drug.strip(), q
-
     if "|" in q:
         parts = [p.strip() for p in q.split("|", 1)]
         if len(parts) == 2 and parts[0] and parts[1]:
             return parts[0], parts[1]
 
-    # "X with Y" / "X and Y"
+    # "… with ibuprofen?" / "Can I take this with X"
+    m = re.search(
+        r"(?:with|and|plus)\s+([a-zA-Z][a-zA-Z0-9\s\-/']{0,60}?)(?:\?|$|\.)",
+        q,
+        re.IGNORECASE,
+    )
+    if m:
+        other = m.group(1).strip()
+        if scanned_drug:
+            return scanned_drug.strip(), other
+        return q, other  # noqa: unlikely path
+
     m = re.search(
         r"(?:take|use|combine)?\s*(.+?)\s+(?:with|and|plus)\s+(.+?)(?:\?|$)",
         q,
@@ -133,7 +141,12 @@ def parse_interaction_query(
         return m.group(1).strip(), m.group(2).strip()
 
     if scanned_drug:
-        return scanned_drug.strip(), q
+        # Agent passed only the other drug name (e.g. "ibuprofen")
+        if len(q.split()) <= 4 and "?" not in q:
+            return scanned_drug.strip(), q
+        raise ValueError(
+            "Could not parse the other drug name. Try: 'ibuprofen' or 'Can I take this with ibuprofen?'"
+        )
 
     raise ValueError(
         "Could not parse two drugs. Use format: 'drug_a|drug_b' or set scanned drug context."
