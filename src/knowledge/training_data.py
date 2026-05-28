@@ -79,6 +79,9 @@ def generate_weak_supervision_examples(
 
     def add_pair(query: str, chunk: dict[str, Any], label: float) -> None:
         text = (chunk.get("text") or "").strip()
+        # Cross-encoder max length ~512 tokens — keep passages short
+        if len(text) > 2000:
+            text = text[:2000] + "…"
         if text:
             examples.append((query, text, label))
 

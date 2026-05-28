@@ -23,6 +23,8 @@ langchain-openai>=0.1.0     # xAI (OpenAI-compatible API)
 chromadb>=0.4.0             # Vector DB
 sentence-transformers>=2.2.0 # BGE-M3 embeddings + cross-encoder reranker
 FlagEmbedding>=1.2.0        # BGE-reranker-v2-m3
+datasets>=2.0.0             # cross-encoder training
+accelerate>=0.26.0          # cross-encoder training
 
 # Application & Tools
 streamlit>=1.30.0       # UI Dashboard

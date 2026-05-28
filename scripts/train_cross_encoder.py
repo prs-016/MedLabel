@@ -10,7 +10,7 @@ Weak labels are built from FDA + DDInter chunks. Add gold pairs in
 Usage::
 
   export PYTHONPATH=src
-  pip install sentence-transformers torch
+  pip install sentence-transformers torch datasets accelerate
 
   python scripts/train_cross_encoder.py
   python scripts/train_cross_encoder.py --epochs 3 --output models/cross_encoder_medlabel
