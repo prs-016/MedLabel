@@ -20,7 +20,7 @@ google-generativeai>=0.3.0  # Gemini 2.0 Flash
 langchain>=0.1.0            # Agentic framework
 langchain-google-genai>=1.0.0
 chromadb>=0.4.0             # Vector DB
-sentence-transformers>=2.2.0 # BGE-M3 local embeddings
+sentence-transformers>=2.2.0 # BGE-M3 embeddings + CrossEncoder reranker
 
 # Application & Tools
 streamlit>=1.30.0       # UI Dashboard

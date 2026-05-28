@@ -152,9 +152,12 @@ def run_path_a(image_path: str) -> OCRResult:
     """
     Path A — PaddleOCR for flat labels (boxes, blister packs, cream tubes).
 
-    Returns an OCRResult.  If mean confidence across all detected lines is
-    below 75 %, the 'reupload_required' flag is set in hallucination_flags
-    and the caller (or UI) should ask the user to retake the photo.
+    Confidence gate
+    ---------------
+    Mean confidence across all detected lines must be ≥ 75 %.
+    If it falls below that threshold the result has no parsed fields and
+    hallucination_flags includes "reupload_required" so callers / the UI
+    can prompt the user to retake the photo.
     """
     import cv2
 
@@ -162,9 +165,10 @@ def run_path_a(image_path: str) -> OCRResult:
     if img is None:
         raise ValueError(f"Cannot read image file: {image_path!r}")
 
-    ocr = PathAOCR()
+    ocr   = PathAOCR()
     lines = ocr.run(img, preprocess=True)
 
+    # ── No text at all ────────────────────────────────────────────────────────
     if not lines:
         return OCRResult(
             path_used="paddle_ocr",
@@ -173,8 +177,9 @@ def run_path_a(image_path: str) -> OCRResult:
         )
 
     mean_conf = sum(ln["confidence"] for ln in lines) / len(lines)
-    all_text = "\n".join(ln["text"] for ln in lines)
+    all_text  = "\n".join(ln["text"] for ln in lines)
 
+    # ── Below confidence threshold → ask user to re-upload ───────────────────
     if mean_conf < _CONFIDENCE_THRESHOLD:
         logger.warning(
             "Path A confidence %.2f < %.2f — requesting reupload for %s",
@@ -187,15 +192,19 @@ def run_path_a(image_path: str) -> OCRResult:
             hallucination_flags=["confidence_too_low", "reupload_required"],
         )
 
-    drug_name = _extract_drug_name(lines)
-    dosage    = _extract_dosage(lines)
+    # ── Extract all sections ──────────────────────────────────────────────────
+    sections = _extract_sections(lines)
 
     return OCRResult(
-        drug_name=drug_name,
-        dosage=dosage,
-        raw_text=all_text,
-        path_used="paddle_ocr",
-        confidence=mean_conf,
+        drug_name=          sections["drug_name"],
+        dosage=             sections["dosage"],
+        active_ingredients= sections["active_ingredients"],
+        warnings=           sections["warnings"],
+        directions=         sections["directions"],
+        expiry_date=        sections["expiry_date"],
+        raw_text=           all_text,
+        path_used=          "paddle_ocr",
+        confidence=         mean_conf,
     )
 
 
@@ -256,15 +265,44 @@ def _auto_rotate(img, *, mode: str = "heuristic"):
     return img
 
 
+# ── Section keyword anchors ───────────────────────────────────────────────────
+
+# Keywords that open a labelled section in a medicine label
+_SEC_ACTIVE = re.compile(
+    r"\bactive\s+ingredient|\bingredients?\b|\bcontains\b", re.IGNORECASE
+)
+_SEC_WARNINGS = re.compile(
+    r"\bwarnings?\b|\bcautions?\b|\bdo\s+not\b|\bstop\s+use\b|\bask\s+a\s+doctor\b",
+    re.IGNORECASE,
+)
+_SEC_DIRECTIONS = re.compile(
+    r"\bdirections?\b|\bhow\s+to\s+use\b|\bdosage\s+and\s+use\b",
+    re.IGNORECASE,
+)
+_SEC_EXPIRY = re.compile(
+    r"\bexp(?:iry|iration|\.?)?\s*:?\s*\d|\buse\s+by\b|\bbest\s+by\b|\buse\s+before\b",
+    re.IGNORECASE,
+)
+_DATE_PATTERN = re.compile(
+    r"\b\d{1,2}[-/]\d{1,2}[-/]\d{2,4}\b"
+    r"|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{4}\b"
+    r"|\b\d{2}/\d{4}\b",
+    re.IGNORECASE,
+)
+
+# Lines that should never be treated as the drug name
+_DRUG_NAME_STOP = re.compile(
+    r"^\s*(?:lot|exp|ndc|rx|mfg|dist|manufactured|directions|warning|"
+    r"storage|keep|shake|refills?|pharmacist|dispense|quantity|qty|"
+    r"patient|dr\b|dr\.)\b",
+    re.IGNORECASE,
+)
+
+
 # ── Field extraction helpers ──────────────────────────────────────────────────
 
 def _extract_drug_name(lines: list[dict]) -> str:
-    """
-    Heuristic: drug name is the first high-confidence line near the top that
-    is NOT a metadata keyword.  Lines containing ONLY a dosage unit are still
-    accepted — the drug name and dosage often appear together (e.g.
-    "AMOXICILLIN 500 MG").
-    """
+    """First high-confidence line near the top that is not a metadata keyword."""
     for ln in lines:
         text = ln["text"]
         if (
@@ -278,20 +316,92 @@ def _extract_drug_name(lines: list[dict]) -> str:
 
 def _extract_dosage(lines: list[dict]) -> str:
     """
-    Return the dosage expression.  The drug name line often contains it
-    (e.g. "AMOXICILLIN 500 MG") so we extract just the matched substring
-    rather than the whole line when it would duplicate the drug name.
+    Return the dosage string.  When the drug-name line already contains the
+    dosage (e.g. "AMOXICILLIN 500 MG") only the matched token is returned so
+    it does not duplicate the drug name field.
     """
     drug_name = _extract_drug_name(lines)
     for ln in lines:
         m = _DOSAGE_UNITS.search(ln["text"])
         if m:
             text = ln["text"].strip()
-            # If this line IS the drug name, return only the dosage portion
-            if text == drug_name:
-                return m.group(0).strip()
-            return text
+            return m.group(0).strip() if text == drug_name else text
     return ""
+
+
+def _extract_sections(lines: list[dict]) -> dict:
+    """
+    Scan the detected lines top-to-bottom and bucket them into labelled
+    sections using keyword anchors.
+
+    Returns a dict with keys:
+        drug_name, dosage, active_ingredients, warnings, directions,
+        expiry_date, other_text
+    Every value is a string (multi-line values joined with "; ").
+    """
+    drug_name = _extract_drug_name(lines)
+    dosage    = _extract_dosage(lines)
+
+    active_parts:     list[str] = []
+    warning_parts:    list[str] = []
+    direction_parts:  list[str] = []
+    expiry_parts:     list[str] = []
+    other_parts:      list[str] = []
+
+    # Simple one-pass state machine: track which section we are currently in
+    current_section: str | None = None
+
+    for ln in lines:
+        text = ln["text"].strip()
+        if not text:
+            continue
+
+        # Skip lines already captured as drug_name or dosage
+        if text == drug_name or text == dosage:
+            continue
+
+        # Check if this line opens a new section
+        if _SEC_ACTIVE.search(text):
+            current_section = "active"
+        elif _SEC_WARNINGS.search(text):
+            current_section = "warnings"
+        elif _SEC_DIRECTIONS.search(text):
+            current_section = "directions"
+        elif _SEC_EXPIRY.search(text) or _DATE_PATTERN.search(text):
+            current_section = "expiry"
+        else:
+            # Append to whichever section is currently open, or to other_text
+            if current_section == "active":
+                active_parts.append(text)
+            elif current_section == "warnings":
+                warning_parts.append(text)
+            elif current_section == "directions":
+                direction_parts.append(text)
+            elif current_section == "expiry":
+                expiry_parts.append(text)
+            else:
+                other_parts.append(text)
+            continue
+
+        # The anchor line itself goes into its own section too
+        if current_section == "active":
+            active_parts.append(text)
+        elif current_section == "warnings":
+            warning_parts.append(text)
+        elif current_section == "directions":
+            direction_parts.append(text)
+        elif current_section == "expiry":
+            expiry_parts.append(text)
+
+    return {
+        "drug_name":          drug_name,
+        "dosage":             dosage,
+        "active_ingredients": "; ".join(active_parts),
+        "warnings":           "; ".join(warning_parts),
+        "directions":         "; ".join(direction_parts),
+        "expiry_date":        "; ".join(expiry_parts),
+        "other_text":         "; ".join(other_parts),
+    }
 
 
 # ── Path B — Gemini Vision ─────────────────────────────────────────────────────
