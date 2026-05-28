@@ -52,3 +52,5 @@ drug_db/
 drug_db_export.json
 venv/
 *.HEIC
+drug_db/
+drug_db_export.json
