@@ -1,31 +1,105 @@
+from __future__ import annotations
+
+import json
 import logging
 from typing import Optional
+
 import chromadb
-from chromadb.utils import embedding_functions
+from chromadb import Documents, EmbeddingFunction, Embeddings
 
 logger = logging.getLogger(__name__)
 
 
+class BGEM3EmbeddingFunction(EmbeddingFunction):
+    """
+    Wraps BAAI/bge-m3 for ChromaDB.
+    Tries FlagEmbedding first, falls back to
+    sentence-transformers if not installed.
+    """
+
+    MODEL_NAME = "BAAI/bge-m3"
+
+    def __init__(self):
+        self._model   = None
+        self._backend = "none"
+        self._load()
+
+    def _load(self):
+        try:
+            from FlagEmbedding import BGEM3FlagModel
+            logger.info("Loading BGE-M3 via FlagEmbedding...")
+            self._model   = BGEM3FlagModel(
+                self.MODEL_NAME, use_fp16=True
+            )
+            self._backend = "flag"
+            logger.info("BGE-M3 (FlagEmbedding) ready.")
+            return
+        except ImportError:
+            logger.warning(
+                "FlagEmbedding not installed. "
+                "pip install FlagEmbedding"
+            )
+        try:
+            from sentence_transformers import SentenceTransformer
+            logger.info(
+                "Loading BGE-M3 via sentence-transformers..."
+            )
+            self._model   = SentenceTransformer(self.MODEL_NAME)
+            self._backend = "st"
+            logger.info("BGE-M3 (sentence-transformers) ready.")
+        except Exception as exc:
+            logger.error("Could not load BGE-M3: %s", exc)
+
+    def __call__(self, input: Documents) -> Embeddings:
+        if self._model is None:
+            raise RuntimeError(
+                "BGE-M3 not loaded. "
+                "pip install FlagEmbedding"
+            )
+        if self._backend == "flag":
+            result = self._model.encode(
+                list(input),
+                batch_size          = 12,
+                max_length          = 8192,
+                return_dense        = True,
+                return_sparse       = False,
+                return_colbert_vecs = False,
+            )
+            return result["dense_vecs"].tolist()
+        else:
+            vecs = self._model.encode(
+                list(input), normalize_embeddings=True
+            )
+            return vecs.tolist()
+
+
 class DrugEmbedder:
 
-    def __init__(self, db_path: str = "./drug_db", model_name: str = "all-MiniLM-L6-v2"):
-        self.client = chromadb.PersistentClient(path=db_path)
-        ef = embedding_functions.SentenceTransformerEmbeddingFunction(model_name)
+    def __init__(
+        self,
+        db_path:    str = "./drug_db",
+        model_name: str = "BAAI/bge-m3",
+    ):
+        self.db_path    = db_path
+        self.model_name = model_name
+        self.client     = chromadb.PersistentClient(path=db_path)
+        ef              = BGEM3EmbeddingFunction()
+
         self.collection = self.client.get_or_create_collection(
-            name="drugs",
-            embedding_function=ef,
-            metadata={"hnsw:space": "cosine"}
+            name               = "drugs",
+            embedding_function = ef,
+            metadata           = {"hnsw:space": "cosine"},
         )
-        logger.info("ChromaDB ready at %s — %d chunks", db_path, self.collection.count())
+        logger.info(
+            "ChromaDB ready at %s — %d chunks  [BGE-M3]",
+            db_path, self.collection.count()
+        )
 
     def upsert_chunks(self, chunks: list[dict]) -> int:
         if not chunks:
             return 0
-
         ids, documents, metadatas = [], [], []
         for i, chunk in enumerate(chunks):
-            # DDInter docs carry a stable "id" field — use it to avoid collisions.
-            # FDA/RxNorm chunks don't have one, so we build the old key.
             if "id" in chunk:
                 doc_id = chunk["id"]
             else:
@@ -33,12 +107,12 @@ class DrugEmbedder:
                 sec    = chunk["metadata"].get("section_type", "unknown")
                 source = chunk["metadata"].get("source", "unknown")
                 doc_id = f"{drug}__{sec}__{source}__{i}"
-
             ids.append(doc_id)
             documents.append(chunk["text"])
             metadatas.append(chunk["metadata"])
-
-        self.collection.upsert(ids=ids, documents=documents, metadatas=metadatas)
+        self.collection.upsert(
+            ids=ids, documents=documents, metadatas=metadatas
+        )
         logger.info(
             "Upserted %d chunks (first drug: '%s')",
             len(chunks),
@@ -49,10 +123,13 @@ class DrugEmbedder:
     def query(
         self,
         query_text: str,
-        n_results: int = 5,
-        where: Optional[dict] = None,
+        n_results:  int            = 5,
+        where:      Optional[dict] = None,
     ) -> list[dict]:
-        kwargs = {"query_texts": [query_text], "n_results": n_results}
+        kwargs: dict = {
+            "query_texts": [query_text],
+            "n_results":   n_results,
+        }
         if where:
             kwargs["where"] = where
         results = self.collection.query(**kwargs)
@@ -65,14 +142,12 @@ class DrugEmbedder:
             for i, doc in enumerate(results["documents"][0])
         ]
 
-    def export_to_json(self, output_path: str = "drug_db_export.json") -> int:
-        """
-        Export the entire ChromaDB collection to a JSON file.
-        Returns the number of records exported.
-        """
-        import json
-
-        data = self.collection.get(include=["documents", "metadatas"])
+    def export_to_json(
+        self, output_path: str = "drug_db_export.json"
+    ) -> int:
+        data = self.collection.get(
+            include=["documents", "metadatas"]
+        )
         records = [
             {
                 "id":       data["ids"][i],
@@ -81,9 +156,9 @@ class DrugEmbedder:
             }
             for i in range(len(data["ids"]))
         ]
-
         with open(output_path, "w") as f:
             json.dump(records, f, indent=2)
-
-        logger.info("Exported %d records → %s", len(records), output_path)
+        logger.info(
+            "Exported %d records → %s", len(records), output_path
+        )
         return len(records)
