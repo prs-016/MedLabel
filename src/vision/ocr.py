@@ -4,7 +4,7 @@ import base64
 import logging
 import json
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, Literal
 import requests
 
 from dotenv import load_dotenv
@@ -64,14 +64,344 @@ class OCRResult:
         return len(self.hallucination_flags) == 0
 
 
-# ── Path A stub ────────────────────────────────────────────────────────────────
+# ── Path A — PaddleOCR ────────────────────────────────────────────────────────
+
+_CONFIDENCE_THRESHOLD = 0.65
+
+# Common dosage units to anchor extraction
+_DOSAGE_UNITS = re.compile(
+    r"\d+(?:\.\d+)?\s*(?:mg|mcg|g|ml|l|iu|%|mg/ml|mg/g|units?)\b",
+    re.IGNORECASE,
+)
+
+# Patterns that typically mark the first line of a drug name block
+_DRUG_NAME_STOP = re.compile(
+    r"^\s*(?:lot|exp|ndc|rx|mfg|dist|manufactured|directions|warning|"
+    r"storage|keep|shake|refills?|pharmacist|dispense|quantity|qty|"
+    r"patient|dr\b|dr\.)\b",
+    re.IGNORECASE,
+)
+
+
+class PathAOCR:
+    """
+    PaddleOCR wrapper for flat labels (boxes, blister packs, cream tubes).
+
+    Usage
+    -----
+    ocr = PathAOCR()
+    lines = ocr.run(cv2_image)
+    # lines → [{"text": "...", "confidence": 0.98}, ...]
+    """
+
+    def __init__(self, lang: str = "en") -> None:
+        try:
+            from paddleocr import PaddleOCR  # type: ignore
+        except ImportError as exc:
+            raise ImportError(
+                "PaddleOCR is not installed. "
+                "Run: pip install paddleocr && pip install -r requirements-paddle.txt"
+            ) from exc
+        # use_textline_orientation replaces use_angle_cls in PaddleOCR 3.x
+        self._ocr = PaddleOCR(use_textline_orientation=True, lang=lang)
+
+    # ── public ────────────────────────────────────────────────────────────────
+
+    def run(
+        self,
+        img,  # np.ndarray (BGR, from cv2.imread)
+        *,
+        preprocess: bool = True,
+        auto_page_rotate: bool = False,
+        page_rotate_mode: Literal["heuristic", "ocr", "none"] = "heuristic",
+        min_confidence: float = 0.0,
+    ) -> list[dict]:
+        """
+        Run OCR on a cv2 BGR image.
+
+        Returns
+        -------
+        list of {"text": str, "confidence": float}, ordered top-to-bottom.
+        Lines with confidence < min_confidence are excluded.
+        """
+        if preprocess:
+            img = _preprocess_image(img)
+
+        if auto_page_rotate and page_rotate_mode != "none":
+            img = _auto_rotate(img, mode=page_rotate_mode)
+
+        # PaddleOCR 3.x: predict() returns a list of result objects;
+        # each converts to a dict with rec_texts / rec_scores arrays.
+        paddle_results = self._ocr.predict(img)
+
+        lines: list[dict] = []
+        for page_result in (paddle_results or []):
+            d = dict(page_result)
+            texts  = d.get("rec_texts", []) or []
+            scores = d.get("rec_scores", []) or []
+            for text, conf in zip(texts, scores):
+                if float(conf) >= min_confidence and text.strip():
+                    lines.append({"text": text.strip(), "confidence": float(conf)})
+
+        return lines
+
+
+# ── Path A entry point ────────────────────────────────────────────────────────
 
 def run_path_a(image_path: str) -> OCRResult:
     """
     Path A — PaddleOCR for flat labels (boxes, blister packs, cream tubes).
-    To be implemented with PaddleOCR + OpenCV preprocessing.
+
+    Confidence gate
+    ---------------
+    Mean confidence across all detected lines must be ≥ 75 %.
+    If it falls below that threshold the result has no parsed fields and
+    hallucination_flags includes "reupload_required" so callers / the UI
+    can prompt the user to retake the photo.
     """
-    raise NotImplementedError("Path A (PaddleOCR) not yet implemented.")
+    import cv2
+
+    img = cv2.imread(image_path)
+    if img is None:
+        raise ValueError(f"Cannot read image file: {image_path!r}")
+
+    ocr   = PathAOCR()
+    lines = ocr.run(img, preprocess=True)
+
+    # ── No text at all ────────────────────────────────────────────────────────
+    if not lines:
+        return OCRResult(
+            path_used="paddle_ocr",
+            confidence=0.0,
+            hallucination_flags=["no_text_detected", "reupload_required"],
+        )
+
+    mean_conf = sum(ln["confidence"] for ln in lines) / len(lines)
+    all_text  = "\n".join(ln["text"] for ln in lines)
+
+    # ── Below confidence threshold → ask user to re-upload ───────────────────
+    if mean_conf < _CONFIDENCE_THRESHOLD:
+        logger.warning(
+            "Path A confidence %.2f < %.2f — requesting reupload for %s",
+            mean_conf, _CONFIDENCE_THRESHOLD, image_path,
+        )
+        return OCRResult(
+            raw_text=all_text,
+            path_used="paddle_ocr",
+            confidence=mean_conf,
+            hallucination_flags=["confidence_too_low", "reupload_required"],
+        )
+
+    # ── Extract all sections ──────────────────────────────────────────────────
+    sections = _extract_sections(lines)
+
+    return OCRResult(
+        drug_name=          sections["drug_name"],
+        dosage=             sections["dosage"],
+        active_ingredients= sections["active_ingredients"],
+        warnings=           sections["warnings"],
+        directions=         sections["directions"],
+        expiry_date=        sections["expiry_date"],
+        raw_text=           all_text,
+        path_used=          "paddle_ocr",
+        confidence=         mean_conf,
+    )
+
+
+# ── Preprocessing helpers ─────────────────────────────────────────────────────
+
+def _preprocess_image(img):
+    """CLAHE contrast enhancement → adaptive threshold → return BGR."""
+    import cv2
+    import numpy as np
+
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    enhanced = clahe.apply(gray)
+
+    # Adaptive threshold sharpens text against varied backgrounds
+    thresh = cv2.adaptiveThreshold(
+        enhanced, 255,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY,
+        blockSize=31,
+        C=10,
+    )
+
+    return cv2.cvtColor(thresh, cv2.COLOR_GRAY2BGR)
+
+
+def _auto_rotate(img, *, mode: str = "heuristic"):
+    """
+    Rotate the whole image so text reads left-to-right.
+
+    heuristic: choose 0 or 90 based on aspect ratio (landscape → 0, portrait
+               with tall ratio → rotate 90).
+    ocr:       run PaddleOCR twice (0° and 90°), pick the angle that gives
+               more detected text — slower but more accurate.
+    """
+    import cv2
+    import numpy as np
+
+    h, w = img.shape[:2]
+
+    if mode == "heuristic":
+        if h > w * 1.3:          # noticeably taller than wide → rotate
+            return cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
+        return img
+
+    if mode == "ocr":
+        from paddleocr import PaddleOCR  # type: ignore
+        _tmp = PaddleOCR(use_textline_orientation=False, lang="en")
+
+        def _count(candidate):
+            res = _tmp.predict(candidate) or []
+            return sum(len(dict(r).get("rec_texts") or []) for r in res)
+
+        rotated = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
+        return rotated if _count(rotated) > _count(img) else img
+
+    return img
+
+
+# ── Section keyword anchors ───────────────────────────────────────────────────
+
+# Keywords that open a labelled section in a medicine label
+_SEC_ACTIVE = re.compile(
+    r"\bactive\s+ingredient|\bingredients?\b|\bcontains\b", re.IGNORECASE
+)
+_SEC_WARNINGS = re.compile(
+    r"\bwarnings?\b|\bcautions?\b|\bdo\s+not\b|\bstop\s+use\b|\bask\s+a\s+doctor\b",
+    re.IGNORECASE,
+)
+_SEC_DIRECTIONS = re.compile(
+    r"\bdirections?\b|\bhow\s+to\s+use\b|\bdosage\s+and\s+use\b",
+    re.IGNORECASE,
+)
+_SEC_EXPIRY = re.compile(
+    r"\bexp(?:iry|iration|\.?)?\s*:?\s*\d|\buse\s+by\b|\bbest\s+by\b|\buse\s+before\b",
+    re.IGNORECASE,
+)
+_DATE_PATTERN = re.compile(
+    r"\b\d{1,2}[-/]\d{1,2}[-/]\d{2,4}\b"
+    r"|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{4}\b"
+    r"|\b\d{2}/\d{4}\b",
+    re.IGNORECASE,
+)
+
+# Lines that should never be treated as the drug name
+_DRUG_NAME_STOP = re.compile(
+    r"^\s*(?:lot|exp|ndc|rx|mfg|dist|manufactured|directions|warning|"
+    r"storage|keep|shake|refills?|pharmacist|dispense|quantity|qty|"
+    r"patient|dr\b|dr\.)\b",
+    re.IGNORECASE,
+)
+
+
+# ── Field extraction helpers ──────────────────────────────────────────────────
+
+def _extract_drug_name(lines: list[dict]) -> str:
+    """First high-confidence line near the top that is not a metadata keyword."""
+    for ln in lines:
+        text = ln["text"]
+        if (
+            ln["confidence"] >= 0.80
+            and len(text) >= 3
+            and not _DRUG_NAME_STOP.match(text)
+        ):
+            return text
+    return ""
+
+
+def _extract_dosage(lines: list[dict]) -> str:
+    """
+    Return the dosage string.  When the drug-name line already contains the
+    dosage (e.g. "AMOXICILLIN 500 MG") only the matched token is returned so
+    it does not duplicate the drug name field.
+    """
+    drug_name = _extract_drug_name(lines)
+    for ln in lines:
+        m = _DOSAGE_UNITS.search(ln["text"])
+        if m:
+            text = ln["text"].strip()
+            return m.group(0).strip() if text == drug_name else text
+    return ""
+
+
+def _extract_sections(lines: list[dict]) -> dict:
+    """
+    Scan the detected lines top-to-bottom and bucket them into labelled
+    sections using keyword anchors.
+
+    Returns a dict with keys:
+        drug_name, dosage, active_ingredients, warnings, directions,
+        expiry_date, other_text
+    Every value is a string (multi-line values joined with "; ").
+    """
+    drug_name = _extract_drug_name(lines)
+    dosage    = _extract_dosage(lines)
+
+    active_parts:     list[str] = []
+    warning_parts:    list[str] = []
+    direction_parts:  list[str] = []
+    expiry_parts:     list[str] = []
+    other_parts:      list[str] = []
+
+    # Simple one-pass state machine: track which section we are currently in
+    current_section: str | None = None
+
+    for ln in lines:
+        text = ln["text"].strip()
+        if not text:
+            continue
+
+        # Skip lines already captured as drug_name or dosage
+        if text == drug_name or text == dosage:
+            continue
+
+        # Check if this line opens a new section
+        if _SEC_ACTIVE.search(text):
+            current_section = "active"
+        elif _SEC_WARNINGS.search(text):
+            current_section = "warnings"
+        elif _SEC_DIRECTIONS.search(text):
+            current_section = "directions"
+        elif _SEC_EXPIRY.search(text) or _DATE_PATTERN.search(text):
+            current_section = "expiry"
+        else:
+            # Append to whichever section is currently open, or to other_text
+            if current_section == "active":
+                active_parts.append(text)
+            elif current_section == "warnings":
+                warning_parts.append(text)
+            elif current_section == "directions":
+                direction_parts.append(text)
+            elif current_section == "expiry":
+                expiry_parts.append(text)
+            else:
+                other_parts.append(text)
+            continue
+
+        # The anchor line itself goes into its own section too
+        if current_section == "active":
+            active_parts.append(text)
+        elif current_section == "warnings":
+            warning_parts.append(text)
+        elif current_section == "directions":
+            direction_parts.append(text)
+        elif current_section == "expiry":
+            expiry_parts.append(text)
+
+    return {
+        "drug_name":          drug_name,
+        "dosage":             dosage,
+        "active_ingredients": "; ".join(active_parts),
+        "warnings":           "; ".join(warning_parts),
+        "directions":         "; ".join(direction_parts),
+        "expiry_date":        "; ".join(expiry_parts),
+        "other_text":         "; ".join(other_parts),
+    }
 
 
 # ── Path B — Gemini Vision ─────────────────────────────────────────────────────
