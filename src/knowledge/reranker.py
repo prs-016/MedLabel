@@ -5,12 +5,31 @@ Stage 2 (BGE reranker) and stage 3 (cross-encoder) reranking for retrieved chunk
 from __future__ import annotations
 
 import logging
+import os
+from pathlib import Path
 from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_BGE_RERANKER = "BAAI/bge-reranker-v2-m3"
 DEFAULT_CROSS_ENCODER = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+DEFAULT_FINETUNED_DIR = str(
+    Path(__file__).resolve().parents[2] / "models" / "cross_encoder_medlabel"
+)
+
+
+def get_cross_encoder_model_name() -> str:
+    """
+    Prefer fine-tuned local model when present.
+
+    Set ``CROSS_ENCODER_MODEL`` in ``.env`` to override (path or HuggingFace id).
+    """
+    env = os.getenv("CROSS_ENCODER_MODEL", "").strip()
+    if env:
+        return env
+    if Path(DEFAULT_FINETUNED_DIR).is_dir():
+        return DEFAULT_FINETUNED_DIR
+    return DEFAULT_CROSS_ENCODER
 
 
 class BGEReranker:
@@ -62,8 +81,8 @@ class BGEReranker:
 class CrossEncoderReranker:
     """Cross-encoder reranker on chunk text (final ranking stage)."""
 
-    def __init__(self, model_name: str = DEFAULT_CROSS_ENCODER) -> None:
-        self.model_name = model_name
+    def __init__(self, model_name: Optional[str] = None) -> None:
+        self.model_name = model_name or get_cross_encoder_model_name()
         self._model = None
 
     def _load(self):

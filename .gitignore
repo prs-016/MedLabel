@@ -25,6 +25,9 @@ env/
 models/yolo/*.pt
 models/embeddings/*
 !models/embeddings/.gitkeep
+models/cross_encoder_medlabel/
+data/training/generated_pairs.jsonl
+data/training/cross_encoder_pairs.jsonl
 
 # Data (large files)
 data/raw/images/*

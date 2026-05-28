@@ -126,6 +126,15 @@ python scripts/test_interaction_check.py --scanned acetaminophen --query ibuprof
 
 Pipeline: BGE-M3 embed → vector search → `BAAI/bge-reranker-v2-m3` → cross-encoder → rank by chunk hit count.
 
+**Fine-tune the cross-encoder** (optional, ~5–15 min on CPU for small drug set):
+
+```bash
+python scripts/train_cross_encoder.py --epochs 2
+# then in .env:  CROSS_ENCODER_MODEL=models/cross_encoder_medlabel
+```
+
+See `data/training/README.md` for manual labeled pairs (`cross_encoder_pairs.jsonl`).
+
 **Full demo (upload image + chat):**
 
 ```bash
