@@ -12,6 +12,7 @@ from typing import Any, Optional
 
 from api.openfda import OpenFDAClient
 from api.rxnorm import RxNormClient
+from knowledge.retrieval import HitCount, RetrievalPipeline, RetrievalResult, format_chunks_for_agent
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,8 @@ class AdverseEventsResult:
     resolved_generic: str
     faers_reports: list[dict[str, Any]] = field(default_factory=list)
     label_snippets: list[str] = field(default_factory=list)
+    reranked_chunks: list[dict[str, Any]] = field(default_factory=list)
+    hit_counts: list[dict[str, Any]] = field(default_factory=list)
     search_terms_tried: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
 
@@ -39,9 +42,13 @@ class AdverseEventsResult:
             "resolved_generic": self.resolved_generic,
             "faers_reports": self.faers_reports,
             "label_adverse_reactions": self.label_snippets,
+            "reranked_chunks": self.reranked_chunks,
+            "hit_counts": self.hit_counts,
             "search_terms_tried": self.search_terms_tried,
             "warnings": self.warnings,
-            "has_data": bool(self.faers_reports or self.label_snippets),
+            "has_data": bool(
+                self.faers_reports or self.label_snippets or self.reranked_chunks
+            ),
         }
 
     def format_for_agent(self) -> str:
@@ -61,13 +68,34 @@ class AdverseEventsResult:
             lines.append("openFDA FAERS: no summary found for this drug name.")
             lines.append("")
 
-        if self.label_snippets:
+        if self.reranked_chunks:
+            rag_result = RetrievalResult(
+                query=self.resolved_generic,
+                chunks=self.reranked_chunks,
+                hit_counts=[
+                    HitCount(
+                        key=h.get("key", ""),
+                        label=h.get("label", ""),
+                        count=int(h.get("count", 0)),
+                        top_score=float(h.get("top_score", 0)),
+                    )
+                    for h in self.hit_counts
+                ],
+            )
+            lines.append(
+                format_chunks_for_agent(
+                    rag_result,
+                    title="RAG evidence (BGE-M3 → BGE reranker → cross-encoder)",
+                )
+            )
+            lines.append("")
+        elif self.label_snippets:
             lines.append("FDA label (adverse_reactions section):")
             for snip in self.label_snippets[:3]:
                 lines.append(f"  - {snip[:500]}")
             lines.append("")
         else:
-            lines.append("FDA label: no adverse_reactions section found.")
+            lines.append("FDA label / RAG: no adverse_reactions passages found.")
             lines.append("")
 
         for w in self.warnings:
@@ -147,12 +175,37 @@ def _fetch_label_adverse_reactions(
     return snippets
 
 
+def _retrieve_adverse_rag(
+    drug: ResolvedDrug,
+    pipeline: Optional[RetrievalPipeline] = None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[str]]:
+    generic = drug.generic_name or drug.display_name
+    query = f"{generic} adverse reaction side effect toxicity warning"
+    where: Optional[dict[str, Any]] = None
+    if generic:
+        where = {"drug_name": generic}
+    from knowledge.vectorstore import MedLabelVectorStore
+
+    store = MedLabelVectorStore()
+    if store.count == 0:
+        return [], [], ["ChromaDB is empty. Run: python scripts/ingest_to_chromadb.py"]
+
+    pipe = pipeline or RetrievalPipeline(store=store)
+    result = pipe.retrieve(query, where=where, vector_k=50, bge_top_k=20, cross_top_k=10)
+    hit_dicts = [
+        {"key": h.key, "label": h.label, "count": h.count, "top_score": h.top_score}
+        for h in result.hit_counts
+    ]
+    return result.chunks, hit_dicts, result.warnings
+
+
 def lookup_adverse_events(
     drug_name: str,
     *,
     scanned_drug: Optional[str] = None,
     openfda: Optional[OpenFDAClient] = None,
     rxnorm: Optional[RxNormClient] = None,
+    retrieval: Optional[RetrievalPipeline] = None,
     faers_limit: int = 10,
 ) -> AdverseEventsResult:
     """
@@ -177,11 +230,16 @@ def lookup_adverse_events(
     fda = openfda or OpenFDAClient()
     terms = _search_terms(resolved)
 
+    rag_chunks, hit_counts, rag_warnings = _retrieve_adverse_rag(
+        resolved, pipeline=retrieval
+    )
     faers, tried = _fetch_faers(fda, terms, limit=faers_limit)
-    label_snips = _fetch_label_adverse_reactions(fda, resolved)
+    label_snips = (
+        _fetch_label_adverse_reactions(fda, resolved) if not rag_chunks else []
+    )
 
-    warnings: list[str] = []
-    if not faers and not label_snips:
+    warnings: list[str] = list(rag_warnings)
+    if not faers and not label_snips and not rag_chunks:
         warnings.append(f"Searched FAERS/label as: {', '.join(terms) or query}")
 
     return AdverseEventsResult(
@@ -189,6 +247,8 @@ def lookup_adverse_events(
         resolved_generic=resolved.generic_name or query,
         faers_reports=faers,
         label_snippets=label_snips,
+        reranked_chunks=rag_chunks,
+        hit_counts=hit_counts,
         search_terms_tried=tried,
         warnings=warnings,
     )

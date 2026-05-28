@@ -15,6 +15,7 @@ from typing import Any, Optional
 from api.ddinter import DDInterClient, get_demo_interactions
 from api.openfda import OpenFDAClient
 from api.rxnorm import RxNormClient
+from knowledge.retrieval import HitCount, RetrievalPipeline, RetrievalResult, format_chunks_for_agent
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,8 @@ class InteractionCheckResult:
     drug_b: str
     ddinter_hits: list[dict[str, Any]] = field(default_factory=list)
     fda_snippets: list[dict[str, Any]] = field(default_factory=list)
+    reranked_chunks: list[dict[str, Any]] = field(default_factory=list)
+    hit_counts: list[dict[str, Any]] = field(default_factory=list)
     used_demo_data: bool = False
     warnings: list[str] = field(default_factory=list)
 
@@ -44,9 +47,13 @@ class InteractionCheckResult:
             "drug_b": self.drug_b,
             "ddinter": self.ddinter_hits,
             "fda_label_interactions": self.fda_snippets,
+            "reranked_chunks": self.reranked_chunks,
+            "hit_counts": self.hit_counts,
             "used_demo_data": self.used_demo_data,
             "warnings": self.warnings,
-            "has_interaction_data": bool(self.ddinter_hits or self.fda_snippets),
+            "has_interaction_data": bool(
+                self.ddinter_hits or self.fda_snippets or self.reranked_chunks
+            ),
         }
 
     def format_for_agent(self) -> str:
@@ -76,13 +83,34 @@ class InteractionCheckResult:
             lines.append("DDInter: no matching pair in database.")
             lines.append("")
 
-        if self.fda_snippets:
+        if self.reranked_chunks:
+            rag_result = RetrievalResult(
+                query=f"{self.drug_a} + {self.drug_b}",
+                chunks=self.reranked_chunks,
+                hit_counts=[
+                    HitCount(
+                        key=h.get("key", ""),
+                        label=h.get("label", ""),
+                        count=int(h.get("count", 0)),
+                        top_score=float(h.get("top_score", 0)),
+                    )
+                    for h in self.hit_counts
+                ],
+            )
+            lines.append(
+                format_chunks_for_agent(
+                    rag_result,
+                    title="RAG evidence (BGE-M3 → BGE reranker → cross-encoder)",
+                )
+            )
+            lines.append("")
+        elif self.fda_snippets:
             lines.append("FDA label (drug_interactions section):")
             for snip in self.fda_snippets:
                 lines.append(f"  - [{snip.get('drug_label', '?')}] {snip.get('text', '')[:400]}")
             lines.append("")
         else:
-            lines.append("FDA label: no mention found in drug_interactions for this pair.")
+            lines.append("FDA label / RAG: no interaction passages found for this pair.")
             lines.append("")
 
         for w in self.warnings:
@@ -258,6 +286,38 @@ def _pair_key(a: str, b: str) -> tuple[str, str]:
     return (na, nb) if na <= nb else (nb, na)
 
 
+def _retrieve_interaction_rag(
+    pair: ResolvedDrugPair,
+    pipeline: Optional[RetrievalPipeline] = None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[str]]:
+    """
+    BGE-M3 → BGE reranker → cross-encoder over ChromaDB chunks.
+    Returns (reranked_chunks, hit_count_dicts, warnings).
+    """
+    query = (
+        f"{pair.drug_a_generic} {pair.drug_b_generic} "
+        "drug drug interaction contraindication concomitant use"
+    )
+    from knowledge.vectorstore import MedLabelVectorStore
+
+    store = MedLabelVectorStore()
+    if store.count == 0:
+        return [], [], ["ChromaDB is empty. Run: python scripts/ingest_to_chromadb.py"]
+
+    pipe = pipeline or RetrievalPipeline(store=store)
+    result = pipe.retrieve(query, vector_k=50, bge_top_k=20, cross_top_k=10)
+    hit_dicts = [
+        {
+            "key": h.key,
+            "label": h.label,
+            "count": h.count,
+            "top_score": h.top_score,
+        }
+        for h in result.hit_counts
+    ]
+    return result.chunks, hit_dicts, result.warnings
+
+
 def interaction_check(
     query: str,
     scanned_drug: Optional[str] = None,
@@ -265,6 +325,7 @@ def interaction_check(
     ddinter: Optional[DDInterClient] = None,
     openfda: Optional[OpenFDAClient] = None,
     rxnorm: Optional[RxNormClient] = None,
+    retrieval: Optional[RetrievalPipeline] = None,
 ) -> InteractionCheckResult:
     """
     Check interactions between two drugs using DDInter + FDA labels.
@@ -283,9 +344,12 @@ def interaction_check(
     fda = openfda or OpenFDAClient()
 
     ddinter_hits, used_demo = _lookup_ddinter(dd, resolved)
-    fda_hits = _fda_interaction_snippets(fda, resolved)
+    rag_chunks, hit_counts, rag_warnings = _retrieve_interaction_rag(
+        resolved, pipeline=retrieval
+    )
+    fda_hits = _fda_interaction_snippets(fda, resolved) if not rag_chunks else []
 
-    warnings: list[str] = []
+    warnings: list[str] = list(rag_warnings)
     if not dd.has_data() and not used_demo:
         warnings.append(
             "DDInter CSV files not loaded — place files in data/ddinter/ (see README)."
@@ -296,6 +360,8 @@ def interaction_check(
         drug_b=resolved.drug_b_generic,
         ddinter_hits=ddinter_hits,
         fda_snippets=fda_hits,
+        reranked_chunks=rag_chunks,
+        hit_counts=hit_counts,
         used_demo_data=used_demo,
         warnings=warnings,
     )

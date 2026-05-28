@@ -117,6 +117,15 @@ python3 scripts/test_adverse_events.py --drug ibuprofen
 python3 scripts/test_adverse_events.py --scanned acetaminophen --query "What are the side effects?"
 ```
 
+**RAG pipeline (required for reranked tools):**
+
+```bash
+python scripts/ingest_to_chromadb.py   # FDA labels + DDInter → ChromaDB
+python scripts/test_interaction_check.py --scanned acetaminophen --query ibuprofen
+```
+
+Pipeline: BGE-M3 embed → vector search → `BAAI/bge-reranker-v2-m3` → cross-encoder → rank by chunk hit count.
+
 **Full demo (upload image + chat):**
 
 ```bash

@@ -158,6 +158,25 @@ class DDInterClient:
         self.load()
         return self.row_count > 0
 
+    def iter_all_records(self) -> list[DDIRecord]:
+        """All unique interaction records (for ChromaDB ingest)."""
+        self.load()
+        seen: set[tuple[str, str]] = set()
+        out: list[DDIRecord] = []
+        for recs in self._pair_index.values():
+            for rec in recs:
+                key = _pair_key(rec.drug_a, rec.drug_b)
+                if key not in seen:
+                    seen.add(key)
+                    out.append(rec)
+        if not out:
+            for rec in _DEMO_PAIRS:
+                key = _pair_key(rec.drug_a, rec.drug_b)
+                if key not in seen:
+                    seen.add(key)
+                    out.append(rec)
+        return out
+
 
 # Built-in demo pairs when CSVs are not downloaded yet (common OTC examples)
 _DEMO_PAIRS: list[DDIRecord] = [

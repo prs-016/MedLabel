@@ -1,10 +1,8 @@
 """
 LangChain agent tools for MedLabel.
 
-Team ownership:
-  - vector_search      — ChromaDB + BGE-M3 rerank pipeline
-  - interaction_check  — DDInter + FDA (interaction_check.py)
-  - adverse_events     — openFDA FAERS + label (adverse_events.py)
+All three tools use the shared RAG pipeline when ChromaDB is populated:
+  BGE-M3 embed → vector search → BGE reranker → cross-encoder → hit counts
 """
 
 from __future__ import annotations
@@ -13,30 +11,33 @@ from typing import TYPE_CHECKING, Optional
 
 from agent.adverse_events import lookup_adverse_events
 from agent.interaction_check import interaction_check as run_interaction_check
+from knowledge.retrieval import format_chunks_for_agent, retrieve
 
 if TYPE_CHECKING:
     from langchain.agents import Tool
 
 
-def vector_search(query: str) -> str:
-    """Placeholder until ChromaDB + rerank pipeline is wired (teammate)."""
-    return (
-        "vector_search is not wired yet. "
-        "Use interaction_check for drug–drug questions or adverse_events for side effects."
-    )
+def vector_search(query: str, scanned_drug: Optional[str] = None) -> str:
+    """
+    Search FDA / DDInter chunks via BGE-M3 + BGE reranker + cross-encoder.
+
+    Filters to ``scanned_drug`` when provided.
+    """
+    try:
+        where = None
+        if scanned_drug:
+            where = {"drug_name": scanned_drug.strip()}
+        result = retrieve(query, where=where)
+        header = f"vector_search for: {query}"
+        if scanned_drug:
+            header += f" (drug filter: {scanned_drug})"
+        return format_chunks_for_agent(result, title=header)
+    except Exception as e:
+        return f"vector_search failed: {e}"
 
 
 def adverse_events(drug_name: str, scanned_drug: Optional[str] = None) -> str:
-    """
-    Top reported adverse reactions from openFDA FAERS + FDA label section.
-
-    Parameters
-    ----------
-    drug_name:
-        Drug name from the question, or pass scanned drug when user asks about "this" medicine.
-    scanned_drug:
-        Drug from the scanned label.
-    """
+    """Adverse events: RAG pipeline + openFDA FAERS."""
     try:
         result = lookup_adverse_events(drug_name, scanned_drug=scanned_drug)
         return result.format_for_agent()
@@ -47,9 +48,7 @@ def adverse_events(drug_name: str, scanned_drug: Optional[str] = None) -> str:
 
 
 def interaction_check(query: str, scanned_drug: Optional[str] = None) -> str:
-    """
-    Check drug–drug interactions via DDInter + FDA label interactions section.
-    """
+    """Drug interactions: DDInter + RAG pipeline (BGE + cross-encoder)."""
     try:
         result = run_interaction_check(query, scanned_drug=scanned_drug)
         return result.format_for_agent()
@@ -71,30 +70,33 @@ def build_agent_tools(scanned_drug: Optional[str] = None) -> list:
     def _adverse(q: str) -> str:
         return adverse_events(q, scanned_drug=sd or None)
 
+    def _vector(q: str) -> str:
+        return vector_search(q, scanned_drug=sd or None)
+
     return [
         Tool(
             name="vector_search",
-            func=vector_search,
+            func=_vector,
             description=(
-                "Search FDA label chunks in the vector database for dosage, warnings, "
-                "ingredients, and directions. Input: the user's question."
+                "Search FDA label chunks with vector DB + rerankers. "
+                "Use for dosage, warnings, ingredients, directions. "
+                "Input: the user's question."
             ),
         ),
         Tool(
             name="interaction_check",
             func=_interaction,
             description=(
-                "Check if two drugs interact. Use when user asks 'Can I take this with X?'. "
-                "Input: the other drug name (e.g. ibuprofen). "
-                "The scanned medicine is already known from context."
+                "Check drug-drug interactions (DDInter + reranked label chunks). "
+                "Input: other drug name or full question. Scanned drug is known."
             ),
         ),
         Tool(
             name="adverse_events",
             func=_adverse,
             description=(
-                "Get commonly reported side effects from FDA adverse event reports and label. "
-                "Input: drug name, or ask about side effects of the scanned medicine."
+                "Side effects: FAERS + reranked adverse_reactions chunks. "
+                "Input: question or drug name."
             ),
         ),
     ]
