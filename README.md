@@ -113,6 +113,8 @@ USER: Photo of Any Medicine Packaging
 ```bash
 export PYTHONPATH=src
 python3 scripts/test_interaction_check.py --scanned acetaminophen --query ibuprofen
+python3 scripts/test_adverse_events.py --drug ibuprofen
+python3 scripts/test_adverse_events.py --scanned acetaminophen --query "What are the side effects?"
 ```
 
 **Full demo (upload image + chat):**

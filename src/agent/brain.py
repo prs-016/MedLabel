@@ -45,8 +45,20 @@ def _is_adverse_events_question(question: str) -> bool:
     q = question.lower()
     return any(
         w in q
-        for w in ("side effect", "adverse", "reaction", "symptom", "faers")
-    )
+        for w in (
+            "side effect",
+            "side effects",
+            "adverse",
+            "adverse event",
+            "symptom",
+            "symptoms",
+            "faers",
+            "reaction",
+            "reactions",
+            "what happens if",
+            "risk",
+        )
+    ) and not _is_interaction_question(question)
 
 
 class MedAgent:
@@ -69,7 +81,7 @@ class MedAgent:
         if _is_interaction_question(user_query) and self.scanned_drug:
             return interaction_check(user_query, scanned_drug=self.scanned_drug)
         if _is_adverse_events_question(user_query):
-            return adverse_events(self.scanned_drug or user_query)
+            return adverse_events(user_query, scanned_drug=self.scanned_drug or None)
         return vector_search(user_query)
 
     def run_query(self, user_query: str) -> str:

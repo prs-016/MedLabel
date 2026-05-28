@@ -116,15 +116,29 @@ class OpenFDAClient:
         return label.to_chunks() if label else []
 
     def get_adverse_events(self, drug_name: str, limit: int = 10) -> list[dict]:
-        params = self._build_params({
-            "search": f'patient.drug.medicinalproduct:"{drug_name}"',
-            "count":  "patient.reaction.reactionmeddrapt.exact",
-            "limit":  limit,
-        })
-        data = self._get(FDA_EVENT_BASE, params)
-        if not data or "results" not in data:
+        """Top FAERS reaction counts for a drug (tries several openFDA search fields)."""
+        name = drug_name.strip()
+        if not name:
             return []
-        return [{"reaction": r["term"], "count": r["count"]} for r in data["results"]]
+
+        searches = [
+            f'patient.drug.openfda.generic_name:"{name}"',
+            f'patient.drug.openfda.brand_name:"{name}"',
+            f'patient.drug.medicinalproduct:"{name}"',
+        ]
+        for search in searches:
+            params = self._build_params({
+                "search": search,
+                "count": "patient.reaction.reactionmeddrapt.exact",
+                "limit": limit,
+            })
+            data = self._get(FDA_EVENT_BASE, params)
+            if data and data.get("results"):
+                return [
+                    {"reaction": r["term"], "count": r["count"]}
+                    for r in data["results"]
+                ]
+        return []
 
     def _parse_label(self, raw: dict) -> DrugLabel:
         meta = raw.get("openfda", {})

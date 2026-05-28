@@ -38,31 +38,48 @@ def _llm_status() -> str:
     return "missing"
 
 
+def _is_interaction_question(question: str) -> bool:
+    q = question.lower()
+    return any(
+        w in q for w in ("with", "together", "combine", "interaction", "mix")
+    ) or ("take" in q and "with" in q)
+
+
+def _is_adverse_events_question(question: str) -> bool:
+    q = question.lower()
+    if _is_interaction_question(question):
+        return False
+    return any(
+        w in q
+        for w in (
+            "side effect",
+            "side effects",
+            "adverse",
+            "symptom",
+            "symptoms",
+            "faers",
+            "reaction",
+            "reactions",
+        )
+    )
+
+
 def _answer_question(question: str, scanned_drug: str) -> str:
     """Answer chat using interaction_check / adverse_events tools."""
-    q_lower = question.lower()
-    interaction_hint = any(
-        w in q_lower
-        for w in ("with", "together", "combine", "interaction", "mix", "take")
-    )
-    adverse_hint = any(
-        w in q_lower
-        for w in ("side effect", "adverse", "reaction", "symptom")
-    )
+    if _is_adverse_events_question(question):
+        return adverse_events(question, scanned_drug=scanned_drug)
 
-    if interaction_hint and scanned_drug:
+    if _is_interaction_question(question):
         try:
             return tool_interaction_check(question, scanned_drug=scanned_drug)
-        except Exception as exc:
+        except Exception:
             return interaction_check(question, scanned_drug=scanned_drug).format_for_agent()
 
-    if adverse_hint and scanned_drug:
-        return adverse_events(scanned_drug)
-
-    if scanned_drug:
-        return tool_interaction_check(question, scanned_drug=scanned_drug)
-
-    return "Analyze a label first so we know which medicine you scanned."
+    return (
+        f"Scanned drug: **{scanned_drug}**. Ask about:\n"
+        "- Drug interactions: *Can I take this with ibuprofen?*\n"
+        "- Side effects: *What are the side effects of this medicine?*"
+    )
 
 
 st.set_page_config(page_title="MedLabel", layout="wide")
