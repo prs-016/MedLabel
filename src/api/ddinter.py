@@ -181,6 +181,14 @@ class DDInterClient:
                     s.decompose()
                 management_text = mgmt_div.get_text(strip=True)
 
+            if detail_url and (
+                not interaction_text.strip()
+                or interaction_text.strip() in ("-", "–")
+            ):
+                detail_text = self._fetch_interaction_detail(detail_url)
+                if detail_text:
+                    interaction_text = detail_text
+
             result["drug_drug_interactions"].append({
                 "severity":    severity,
                 "drug_a":      drug_a,
@@ -198,6 +206,36 @@ class DDInterClient:
             f"{BASE}/server/interact-with-food/{ids_slug}/", n_cols=8, csrf=csrf)
 
         return result
+
+    def _fetch_interaction_detail(self, detail_url: str) -> str:
+        """Load the DDInter detail page when the summary panel has no text."""
+        try:
+            r = self.session.get(detail_url, timeout=15)
+            r.raise_for_status()
+        except Exception as exc:
+            logger.warning("DDInter detail fetch failed for %s: %s", detail_url, exc)
+            return ""
+
+        soup = BeautifulSoup(r.text, "html.parser")
+        parts: list[str] = []
+
+        for heading in soup.find_all(["h2", "h3", "h4", "strong"]):
+            title = heading.get_text(strip=True)
+            if not title or title.lower() in ("basic information",):
+                continue
+            block = heading.find_next(["p", "div", "blockquote"])
+            if block:
+                body = block.get_text(" ", strip=True)
+                if body and len(body) > 30:
+                    parts.append(f"{title}: {body}")
+
+        if not parts:
+            for p in soup.find_all("p"):
+                text = p.get_text(" ", strip=True)
+                if len(text) > 80:
+                    parts.append(text)
+
+        return " ".join(parts[:3]).strip()
 
     def _extract_csrf(self, soup) -> str:
         token = self.session.cookies.get("csrftoken", "")
