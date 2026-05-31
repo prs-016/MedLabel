@@ -18,7 +18,9 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 _bge_reranker  = None
-_cross_encoder = None
+# Cache cross-encoders per model name so multiple fine-tuned models
+# (e.g. interaction vs vector_search rerankers) can coexist in one process.
+_cross_encoders: dict = {}
 
 
 def _get_bge_reranker(model_name: str = "BAAI/bge-reranker-v2-m3"):
@@ -40,13 +42,12 @@ def _get_bge_reranker(model_name: str = "BAAI/bge-reranker-v2-m3"):
 def _get_cross_encoder(
     model_name: str = "cross-encoder/ms-marco-MiniLM-L-6-v2",
 ):
-    global _cross_encoder
-    if _cross_encoder is None:
+    if model_name not in _cross_encoders:
         from sentence_transformers import CrossEncoder
         logger.info("Loading CrossEncoder: %s", model_name)
-        _cross_encoder = CrossEncoder(model_name)
-        logger.info("CrossEncoder loaded.")
-    return _cross_encoder
+        _cross_encoders[model_name] = CrossEncoder(model_name)
+        logger.info("CrossEncoder loaded: %s", model_name)
+    return _cross_encoders[model_name]
 
 
 @dataclass
