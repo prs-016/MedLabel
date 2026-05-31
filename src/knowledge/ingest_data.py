@@ -4,7 +4,7 @@ import uuid
 from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
 
-from db_connection import get_db_collection
+from knowledge.db_connection import get_db_collection
 
 # --- Configuration & Paths ---
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))

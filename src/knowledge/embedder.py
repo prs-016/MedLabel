@@ -77,18 +77,16 @@ class DrugEmbedder:
 
     def __init__(
         self,
-        db_path:    str = "./drug_db",
+        db_path:    str = "./medlabel_db",
         model_name: str = "BAAI/bge-m3",
     ):
         self.db_path    = db_path
         self.model_name = model_name
         self.client     = chromadb.PersistentClient(path=db_path)
-        ef              = BGEM3EmbeddingFunction()
+        self._ef        = BGEM3EmbeddingFunction()
 
         self.collection = self.client.get_or_create_collection(
-            name               = "drugs",
-            embedding_function = ef,
-            metadata           = {"hnsw:space": "cosine"},
+            name               = "fda_medication_data",
         )
         logger.info(
             "ChromaDB ready at %s — %d chunks  [BGE-M3]",
@@ -126,9 +124,11 @@ class DrugEmbedder:
         n_results:  int            = 5,
         where:      Optional[dict] = None,
     ) -> list[dict]:
+        # Embed the query ourselves so the 1024-dim BGE-M3 vectors are used
+        query_vec = self._ef([query_text])
         kwargs: dict = {
-            "query_texts": [query_text],
-            "n_results":   n_results,
+            "query_embeddings": query_vec,
+            "n_results":        n_results,
         }
         if where:
             kwargs["where"] = where
