@@ -30,6 +30,14 @@ FIFTY_DRUGS = [
     "tacrolimus", "digoxin", "phenytoin", "carbamazepine", "lithium",
 ]
 
+# Common OTC medicines (see knowledge/expand_common_drugs.py).
+COMMON_OTC_DRUGS = [
+    "acetaminophen", "diphenhydramine", "loratadine", "cetirizine",
+    "dextromethorphan", "doxylamine", "guaifenesin", "pseudoephedrine",
+    "melatonin", "bismuth subsalicylate", "calcium carbonate",
+    "fluticasone propionate",
+]
+
 
 class MedLabelPipeline:
 

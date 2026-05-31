@@ -7,6 +7,8 @@ from typing import Optional
 import chromadb
 from chromadb import Documents, EmbeddingFunction, Embeddings
 
+from knowledge.chroma_config import get_chroma_db_path, get_collection_name
+
 logger = logging.getLogger(__name__)
 
 
@@ -77,22 +79,31 @@ class DrugEmbedder:
 
     def __init__(
         self,
-        db_path:    str = "./drug_db",
+        db_path:    str | None = None,
         model_name: str = "BAAI/bge-m3",
     ):
-        self.db_path    = db_path
+        self.db_path    = db_path or get_chroma_db_path()
         self.model_name = model_name
-        self.client     = chromadb.PersistentClient(path=db_path)
-        ef              = BGEM3EmbeddingFunction()
+        self.client     = chromadb.PersistentClient(path=self.db_path)
+        coll_name       = get_collection_name()
+        self._ef        = BGEM3EmbeddingFunction()
 
-        self.collection = self.client.get_or_create_collection(
-            name               = "drugs",
-            embedding_function = ef,
-            metadata           = {"hnsw:space": "cosine"},
-        )
+        # ingest_data.py stores precomputed BGE-M3 vectors without a
+        # collection embedding function; attach one only for new collections.
+        try:
+            self.collection = self.client.get_collection(name=coll_name)
+            self._manual_query_embed = True
+        except Exception:
+            self.collection = self.client.get_or_create_collection(
+                name               = coll_name,
+                embedding_function = self._ef,
+                metadata           = {"hnsw:space": "cosine"},
+            )
+            self._manual_query_embed = False
+
         logger.info(
             "ChromaDB ready at %s — %d chunks  [BGE-M3]",
-            db_path, self.collection.count()
+            self.db_path, self.collection.count()
         )
 
     def upsert_chunks(self, chunks: list[dict]) -> int:
@@ -126,12 +137,13 @@ class DrugEmbedder:
         n_results:  int            = 5,
         where:      Optional[dict] = None,
     ) -> list[dict]:
-        kwargs: dict = {
-            "query_texts": [query_text],
-            "n_results":   n_results,
-        }
+        kwargs: dict = {"n_results": n_results}
         if where:
             kwargs["where"] = where
+        if self._manual_query_embed:
+            kwargs["query_embeddings"] = self._ef([query_text])
+        else:
+            kwargs["query_texts"] = [query_text]
         results = self.collection.query(**kwargs)
         return [
             {

@@ -94,16 +94,44 @@ class OpenFDAClient:
                     time.sleep(2 ** attempt)
         return None
 
+    def _label_richness(self, raw: dict) -> int:
+        """Prefer labels with interaction/warning sections over bare OTC panels."""
+        priority = (
+            "drug_interactions", "warnings_and_cautions", "adverse_reactions",
+            "contraindications", "boxed_warning", "overdosage",
+        )
+        score = 0
+        for i, section in enumerate(priority):
+            val = raw.get(section, [])
+            if isinstance(val, str):
+                val = [val]
+            if val and any(v.strip() for v in val):
+                score += (len(priority) - i) * 10 + sum(len(v) for v in val) // 500
+        return score
+
     def get_label(self, drug_name: str) -> Optional[DrugLabel]:
         searches = [
+            f'openfda.generic_name:"{drug_name}"',
             f'openfda.generic_name:{drug_name}',
+            f'openfda.brand_name:"{drug_name}"',
             f'openfda.brand_name:{drug_name}',
         ]
+        best_raw: Optional[dict] = None
+        best_score = -1
         for search in searches:
-            params = self._build_params({"search": search, "limit": 1})
+            params = self._build_params({"search": search, "limit": 10})
             data = self._get(FDA_LABEL_BASE, params)
-            if data and data.get("results"):
-                return self._parse_label(data["results"][0])
+            if not data or not data.get("results"):
+                continue
+            for raw in data["results"]:
+                score = self._label_richness(raw)
+                if score > best_score:
+                    best_score = score
+                    best_raw = raw
+            if best_score > 0:
+                break
+        if best_raw:
+            return self._parse_label(best_raw)
         logger.warning("No FDA label found for '%s'", drug_name)
         return None
 

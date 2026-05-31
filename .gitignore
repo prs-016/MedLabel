@@ -38,6 +38,12 @@ data/processed/*
 # ChromaDB local storage
 medlabel_db/
 chroma_db/
+_DEFAULT_DB/
+drug_db/
+
+# Backups from expand/ingest scripts
+*.bak
+data/*.bak
 
 # Streamlit
 .streamlit/secrets.toml
@@ -48,9 +54,6 @@ Thumbs.db
 
 # Jupyter
 .ipynb_checkpoints/
-drug_db/
 drug_db_export.json
 venv/
 *.HEIC
-drug_db/
-drug_db_export.json

@@ -1,115 +1,138 @@
-import os
+"""
+Ingest data/drugs.json into ChromaDB (medlabel_db by default).
+
+Usage (from repo root):
+    PYTHONPATH=src python src/knowledge/ingest_data.py
+    PYTHONPATH=src python src/knowledge/ingest_data.py --reset   # wipe collection first
+"""
+
+from __future__ import annotations
+
+import argparse
 import json
+import os
+import sys
 import uuid
+
 from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
 
-from db_connection import get_db_collection
+# Allow running as script from repo root
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-# --- Configuration & Paths ---
+from knowledge.chroma_config import get_chroma_db_path, get_collection_name
+import chromadb
+
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 JSON_PATH = os.path.join(SCRIPT_DIR, "..", "..", "data", "drugs.json")
 
-# The exact 50 drugs targeted for the database
-FIFTY_DRUGS = [
-    "warfarin", "metformin", "lisinopril", "atorvastatin", "amoxicillin",
-    "metoprolol", "omeprazole", "amlodipine", "sertraline", "levothyroxine",
-    "clopidogrel", "furosemide", "gabapentin", "hydrochlorothiazide", "fluoxetine",
-    "alprazolam", "prednisone", "ciprofloxacin", "azithromycin", "losartan",
-    "escitalopram", "tramadol", "clonazepam", "simvastatin", "pantoprazole",
-    "carvedilol", "montelukast", "tamsulosin", "rosuvastatin", "duloxetine",
-    "quetiapine", "albuterol", "bupropion", "spironolactone", "venlafaxine",
-    "zolpidem", "trazodone", "meloxicam", "naproxen", "ibuprofen",
-    "celecoxib", "rivaroxaban", "apixaban", "methotrexate", "cyclosporine",
-    "tacrolimus", "digoxin", "phenytoin", "carbamazepine", "lithium"
-]
+# Only sub-chunk very long sections; JSON rows are usually already one section.
+MAX_WORDS_BEFORE_CHUNK = 250
+CHUNK_SIZE = 200
+CHUNK_OVERLAP = 50
 
-def chunk_text(text, chunk_size=200, overlap=50):
-    """Splits a long string into smaller chunks with overlapping words."""
+
+def chunk_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP) -> list[str]:
     words = text.split()
+    if len(words) <= MAX_WORDS_BEFORE_CHUNK:
+        return [text]
     chunks = []
-    for i in range(0, len(words), chunk_size - overlap):
-        chunk = " ".join(words[i:i + chunk_size])
-        chunks.append(chunk)
+    step = max(1, chunk_size - overlap)
+    for i in range(0, len(words), step):
+        part = " ".join(words[i : i + chunk_size])
+        if part.strip():
+            chunks.append(part)
     return chunks
 
-def ingest_json_to_chroma():
-    print("Connecting to ChromaDB...")
-    collection = get_db_collection()
 
-    print("Loading BGE-M3 model...")
-    model = SentenceTransformer('BAAI/bge-m3')
+def ingest_json_to_chroma(*, reset: bool = False) -> int:
+    db_path = get_chroma_db_path()
+    coll_name = get_collection_name()
+    os.makedirs(db_path, exist_ok=True)
 
-    print(f"Loading data from {JSON_PATH}...")
-    with open(JSON_PATH, 'r', encoding='utf-8') as file:
+    client = chromadb.PersistentClient(path=db_path)
+    if reset:
+        try:
+            client.delete_collection(coll_name)
+            print(f"Deleted existing collection '{coll_name}'.")
+        except Exception:
+            pass
+
+    collection = client.get_or_create_collection(name=coll_name)
+
+    print(f"DB: {db_path}  collection: {coll_name}")
+    print("Loading BGE-M3...")
+    model = SentenceTransformer("BAAI/bge-m3")
+
+    print(f"Loading {JSON_PATH}...")
+    with open(JSON_PATH, "r", encoding="utf-8") as file:
         all_drugs_data = json.load(file)
-    
-    all_ids = []
-    all_documents = []
-    all_embeddings = []
-    all_metadata = []
 
-    print("Filtering and processing the target drugs...")
-    
-    for item in tqdm(all_drugs_data, desc="Processing JSON"):
-        
-        # 🚨 THE FIX: Looking for "text" instead of "document"
-        full_text = item.get("text", "") 
-        meta = item.get("metadata", {})
-        
-        # Safely grab the drug name for matching
-        raw_drug_name = meta.get("drug_name", "").lower()
-        matched_drug = next((target for target in FIFTY_DRUGS if target in raw_drug_name), None)
-        
-        if not matched_drug or not full_text:
+    all_ids: list[str] = []
+    all_documents: list[str] = []
+    all_embeddings: list[list[float]] = []
+    all_metadatas: list[dict] = []
+
+    print(f"Ingesting all {len(all_drugs_data)} JSON records...")
+    for item in tqdm(all_drugs_data, desc="Processing"):
+        full_text = (item.get("text") or "").strip()
+        meta = item.get("metadata") or {}
+        if not full_text:
             continue
 
-        text_chunks = chunk_text(full_text)
-        
-        # Extract valuable metadata for future RAG querying
+        drug_name = (meta.get("drug_name") or "UNKNOWN").strip()
         section_type = meta.get("section_type", "unknown_section")
         data_source = meta.get("source", "unknown_source")
+        rxcui = str(meta.get("rxcui") or "")
+        brand_name = str(meta.get("brand_name") or "")
+
+        text_chunks = chunk_text(full_text)
+        base_id = item.get("id") or f"{drug_name}_{section_type}"
 
         for chunk_index, chunk in enumerate(text_chunks):
-            # Generate unique suffix to prevent ChromaDB collisions
             unique_suffix = uuid.uuid4().hex[:6]
-            chunk_id = f"{matched_drug}_{section_type}_{chunk_index}_{unique_suffix}".replace(" ", "_")
-            
-            vector = model.encode(chunk).tolist()
+            chunk_id = f"{base_id}_{chunk_index}_{unique_suffix}".replace(" ", "_")
+
+            vector = model.encode(chunk, normalize_embeddings=True).tolist()
 
             all_ids.append(chunk_id)
             all_documents.append(chunk)
             all_embeddings.append(vector)
-            
-            all_metadata.append({
-                "drug_name": matched_drug,
+            all_metadatas.append({
+                "drug_name": drug_name,
                 "section_type": section_type,
-                "source": data_source,  # Now tracking where the info came from!
-                "chunk_index": chunk_index
+                "source": data_source,
+                "chunk_index": chunk_index,
+                "rxcui": rxcui,
+                "brand_name": brand_name,
             })
 
     if not all_ids:
-        print("\n⚠️ STOP: 0 chunks were created. Verify the JSON structure.")
-        return
+        print("STOP: 0 chunks created — check drugs.json structure.")
+        return 0
 
-    print(f"\nSaving {len(all_ids)} vectors to database in batches...")
-    
-    # Set a batch size safely below the 5461 limit
-    batch_size = 5000 
-    
-    # Loop through our massive lists and insert them in chunks of 5000
+    print(f"\nSaving {len(all_ids)} vectors in batches...")
+    batch_size = 5000
     for i in range(0, len(all_ids), batch_size):
-        end_index = min(i + batch_size, len(all_ids))
-        print(f"➡️ Inserting batch {i} to {end_index}...")
-        
+        end = min(i + batch_size, len(all_ids))
+        print(f"  batch {i} → {end}...")
         collection.add(
-            ids=all_ids[i:end_index],
-            embeddings=all_embeddings[i:end_index],
-            documents=all_documents[i:end_index],
-            metadatas=all_metadata[i:end_index]
+            ids=all_ids[i:end],
+            embeddings=all_embeddings[i:end],
+            documents=all_documents[i:end],
+            metadatas=all_metadatas[i:end],
         )
-    
-    print("✅ Ingestion complete! Database is ready.")
+
+    print(f"Done. Collection '{coll_name}' now has {collection.count()} chunks.")
+    return len(all_ids)
+
 
 if __name__ == "__main__":
-    ingest_json_to_chroma()
+    parser = argparse.ArgumentParser(description="Ingest drugs.json into ChromaDB")
+    parser.add_argument(
+        "--reset",
+        action="store_true",
+        help="Delete the collection before ingesting (recommended when re-running full ingest)",
+    )
+    args = parser.parse_args()
+    ingest_json_to_chroma(reset=args.reset)
