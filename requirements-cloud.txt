@@ -1,0 +1,15 @@
+# Streamlit Community Cloud — chat + RAG only (no PaddleOCR / YOLO).
+# Flat-label OCR is disabled on cloud; bottle labels use xAI Vision if XAI_API_KEY is set.
+
+streamlit>=1.30.0
+python-dotenv
+chromadb>=0.4.0
+sentence-transformers>=2.2.0
+openai>=1.0.0
+requests
+pandas
+pydantic>=2.0.0
+pillow
+beautifulsoup4
+tqdm
+numpy>=1.21,<3

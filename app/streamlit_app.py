@@ -14,6 +14,20 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 load_dotenv()
 
+
+def _load_streamlit_secrets() -> None:
+    """Map Streamlit Cloud secrets into os.environ for grok_answer / chroma_config."""
+    try:
+        if hasattr(st, "secrets") and len(st.secrets) > 0:
+            for key, value in st.secrets.items():
+                if isinstance(value, str):
+                    os.environ.setdefault(key, value)
+    except Exception:
+        pass
+
+
+_load_streamlit_secrets()
+
 # Common OTC brand -> generic, so questions like "take with Advil" resolve.
 _BRAND_TO_GENERIC = {
     "advil": "ibuprofen", "motrin": "ibuprofen",
@@ -277,6 +291,14 @@ def answer_question(question: str, scanned_drug: str) -> dict:
 
 st.set_page_config(page_title="MedLabel", layout="wide")
 
+
+@st.cache_resource(show_spinner="Loading label database…")
+def _init_label_db() -> int:
+    from knowledge.bootstrap import ensure_chroma_ready
+
+    return ensure_chroma_ready()
+
+
 st.title("MedLabel: Intelligent Medicine Scanner")
 st.markdown("*AI can make mistakes. Always verify with the physical label or your pharmacist.*")
 
@@ -287,12 +309,12 @@ with st.sidebar:
     if xai_status == "Missing":
         st.caption("Add `XAI_API_KEY=...` to your `.env` file for OCR and chat answers.")
     try:
-        from knowledge.chroma_config import get_chroma_db_path, get_collection_name
-        from knowledge.embedder import DrugEmbedder
-        _n = DrugEmbedder().collection.count()
+        from knowledge.chroma_config import get_collection_name
+
+        _n = _init_label_db()
         st.caption(f"Label DB: `{get_collection_name()}` — **{_n}** chunks")
-    except Exception:
-        st.caption("Label DB: run ingest to populate medlabel_db")
+    except Exception as exc:
+        st.caption(f"Label DB error: {exc}")
     st.divider()
     packaging_type = st.radio(
         "Label type",
