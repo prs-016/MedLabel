@@ -37,6 +37,7 @@ data/processed/*
 
 # ChromaDB local storage
 medlabel_db/
+medlabel_db.tar.gz
 chroma_db/
 _DEFAULT_DB/
 drug_db/
