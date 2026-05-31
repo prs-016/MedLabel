@@ -97,13 +97,19 @@ class PathAOCR:
     def __init__(self, lang: str = "en") -> None:
         try:
             from paddleocr import PaddleOCR  # type: ignore
+            import paddleocr as _paddleocr_mod
         except ImportError as exc:
             raise ImportError(
                 "PaddleOCR is not installed. "
                 "Run: pip install paddleocr && pip install -r requirements-paddle.txt"
             ) from exc
-        # use_textline_orientation replaces use_angle_cls in PaddleOCR 3.x
-        self._ocr = PaddleOCR(use_textline_orientation=True, lang=lang)
+        major = int(_paddleocr_mod.__version__.split(".")[0])
+        if major >= 3:
+            self._ocr = PaddleOCR(use_textline_orientation=True, lang=lang)
+        else:
+            # PaddleOCR 2.x (what most installs have)
+            self._ocr = PaddleOCR(use_angle_cls=True, lang=lang, show_log=False)
+        self._paddle_major = major
 
     # ── public ────────────────────────────────────────────────────────────────
 
@@ -130,18 +136,29 @@ class PathAOCR:
         if auto_page_rotate and page_rotate_mode != "none":
             img = _auto_rotate(img, mode=page_rotate_mode)
 
-        # PaddleOCR 3.x: predict() returns a list of result objects;
-        # each converts to a dict with rec_texts / rec_scores arrays.
-        paddle_results = self._ocr.predict(img)
-
         lines: list[dict] = []
-        for page_result in (paddle_results or []):
-            d = dict(page_result)
-            texts  = d.get("rec_texts", []) or []
-            scores = d.get("rec_scores", []) or []
-            for text, conf in zip(texts, scores):
-                if float(conf) >= min_confidence and text.strip():
-                    lines.append({"text": text.strip(), "confidence": float(conf)})
+        if hasattr(self._ocr, "predict"):
+            # PaddleOCR 3.x
+            paddle_results = self._ocr.predict(img)
+            for page_result in (paddle_results or []):
+                d = dict(page_result)
+                texts  = d.get("rec_texts", []) or []
+                scores = d.get("rec_scores", []) or []
+                for text, conf in zip(texts, scores):
+                    if float(conf) >= min_confidence and text.strip():
+                        lines.append({"text": text.strip(), "confidence": float(conf)})
+        else:
+            # PaddleOCR 2.x — .ocr() returns [[[box, (text, conf)], ...]]
+            raw = self._ocr.ocr(img, cls=True)
+            for page in (raw or []):
+                if not page:
+                    continue
+                for item in page:
+                    if not item or len(item) < 2:
+                        continue
+                    text, conf = item[1]
+                    if float(conf) >= min_confidence and str(text).strip():
+                        lines.append({"text": str(text).strip(), "confidence": float(conf)})
 
         return lines
 
@@ -253,11 +270,14 @@ def _auto_rotate(img, *, mode: str = "heuristic"):
 
     if mode == "ocr":
         from paddleocr import PaddleOCR  # type: ignore
-        _tmp = PaddleOCR(use_textline_orientation=False, lang="en")
+        _tmp = PaddleOCR(use_angle_cls=True, lang="en", show_log=False)
 
         def _count(candidate):
-            res = _tmp.predict(candidate) or []
-            return sum(len(dict(r).get("rec_texts") or []) for r in res)
+            if hasattr(_tmp, "predict"):
+                res = _tmp.predict(candidate) or []
+                return sum(len(dict(r).get("rec_texts") or []) for r in res)
+            raw = _tmp.ocr(candidate, cls=True) or []
+            return sum(len(page) for page in raw if page)
 
         rotated = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
         return rotated if _count(rotated) > _count(img) else img
@@ -404,40 +424,96 @@ def _extract_sections(lines: list[dict]) -> dict:
     }
 
 
-# ── Path B — Gemini Vision ─────────────────────────────────────────────────────
+# ── Path B — xAI Grok Vision ───────────────────────────────────────────────────
+
+XAI_VISION_MODEL = os.getenv("XAI_VISION_MODEL", "grok-4")
+XAI_BASE_URL     = "https://api.x.ai/v1"
+
+XAI_VISION_PROMPT = GEMINI_PROMPT  # same structured JSON extraction prompt
+
 
 def run_path_b(image_path: str, api_key: Optional[str] = None) -> OCRResult:
     """
-    Path B — Gemini Vision for cylindrical bottles.
-
-    Takes a photo of a curved bottle, sends it to Gemini 2.0 Flash,
-    parses the structured JSON response, then runs hallucination checks.
+    Path B — xAI Grok Vision for cylindrical bottles (curved labels).
 
     Parameters
     ----------
     image_path : path to the bottle photo on disk
-    api_key    : Gemini API key — falls back to GEMINI_API_KEY in .env
+    api_key    : xAI API key — falls back to XAI_API_KEY in .env
 
     Returns
     -------
-    OCRResult with path_used = "gemini_vision"
+    OCRResult with path_used = "xai_vision"
     """
-    key = api_key or os.getenv("GEMINI_API_KEY", "")
+    key = api_key or os.getenv("XAI_API_KEY", "")
     if not key:
         raise ValueError(
-            "No Gemini API key found. "
-            "Add GEMINI_API_KEY=your_key to your .env file."
+            "No xAI API key found. "
+            "Add XAI_API_KEY=your_key to your .env file."
         )
 
     image_b64, mime_type = _encode_image(image_path)
-    raw_response         = _call_gemini(image_b64, mime_type, key)
-    result               = _parse_gemini_response(raw_response)
+    raw_response         = _call_xai_vision(image_b64, mime_type, key)
+    result               = _parse_vision_response(raw_response, path_used="xai_vision")
     result               = _check_hallucinations(result)
 
     return result
 
 
-# ── Gemini helpers ─────────────────────────────────────────────────────────────
+def _call_xai_vision(image_b64: str, mime_type: str, api_key: str) -> str:
+    """Send image + prompt to xAI Grok vision, return raw text response."""
+    from openai import OpenAI
+
+    client = OpenAI(api_key=api_key, base_url=XAI_BASE_URL)
+    resp = client.chat.completions.create(
+        model=XAI_VISION_MODEL,
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:{mime_type};base64,{image_b64}",
+                        },
+                    },
+                    {"type": "text", "text": XAI_VISION_PROMPT},
+                ],
+            }
+        ],
+        temperature=0.1,
+    )
+    return resp.choices[0].message.content or ""
+
+
+def _parse_vision_response(raw: str, *, path_used: str) -> OCRResult:
+    """Parse a vision model's JSON response into an OCRResult."""
+    cleaned = re.sub(r"```(?:json)?\s*", "", raw).strip().strip("`").strip()
+
+    try:
+        data = json.loads(cleaned)
+        return OCRResult(
+            drug_name=          data.get("drug_name", "").strip(),
+            dosage=             data.get("dosage", "").strip(),
+            active_ingredients= data.get("active_ingredients", "").strip(),
+            warnings=           data.get("warnings", "").strip(),
+            directions=         data.get("directions", "").strip(),
+            expiry_date=        data.get("expiry_date", "").strip(),
+            raw_text=           raw,
+            path_used=          path_used,
+            confidence=         0.9,
+        )
+    except json.JSONDecodeError:
+        logger.warning("Vision model returned non-JSON response: %s", raw[:200])
+        return OCRResult(
+            raw_text=            raw,
+            path_used=           path_used,
+            confidence=          0.3,
+            hallucination_flags= ["response_not_json"],
+        )
+
+
+# ── Legacy Gemini Path B (kept for reference, not used by run_ocr) ───────────
 
 def _encode_image(image_path: str) -> tuple[str, str]:
     """Read image from disk, return (base64_string, mime_type)."""
@@ -614,7 +690,7 @@ def run_ocr(image_path: str, packaging_type: str) -> OCRResult:
     ----------
     image_path     : path to the image file
     packaging_type : "flat"         → Path A (PaddleOCR)
-                     "cylindrical"  → Path B (Gemini Vision)
+                     "cylindrical"  → Path B (xAI Grok Vision)
     """
     if packaging_type == "cylindrical":
         return run_path_b(image_path)
