@@ -36,7 +36,7 @@ data/processed/*
 !data/processed/.gitkeep
 
 # ChromaDB local storage
-medlabel_db/
+# medlabel_db/ committed to git so Streamlit Cloud has it
 chroma_db/
 _DEFAULT_DB/
 drug_db/
