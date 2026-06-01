@@ -1,18 +1,23 @@
+import os
+import re
 import sys
 import tempfile
 from pathlib import Path
 
-import streamlit as st
 import PIL.Image
-import os
+import streamlit as st
 from dotenv import load_dotenv
-
-import re
 
 # Allow imports from src/
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 load_dotenv()
+
+# Merge Streamlit Cloud secrets into os.environ so all downstream code
+# (which reads os.getenv) works identically in local and cloud environments.
+for _k, _v in st.secrets.items():
+    if isinstance(_v, str):
+        os.environ.setdefault(_k, _v)
 
 # Common OTC brand -> generic, so questions like "take with Advil" resolve.
 _BRAND_TO_GENERIC = {
@@ -198,7 +203,6 @@ def answer_question(question: str, scanned_drug: str) -> dict:
         vector_search, adverse_events, interaction_check,
     )
 
-    drug = _clean_scanned_drug(scanned_drug)
     query_drug = _resolve_query_drug(question, scanned_drug)
     q    = question.lower()
 
@@ -282,12 +286,14 @@ st.markdown("*AI can make mistakes. Always verify with the physical label or you
 
 with st.sidebar:
     st.header("Settings")
-    xai_status = "Set" if os.getenv("XAI_API_KEY") else "Missing"
+    xai_status    = "Set" if os.getenv("XAI_API_KEY") else "Missing"
+    gemini_status = "Set" if os.getenv("GEMINI_API_KEY") else "Missing"
     st.write(f"xAI API Key: **{xai_status}**")
+    st.write(f"Gemini API Key: **{gemini_status}**")
     if xai_status == "Missing":
         st.caption("Add `XAI_API_KEY=...` to your `.env` file for OCR and chat answers.")
     try:
-        from knowledge.chroma_config import get_chroma_db_path, get_collection_name
+        from knowledge.chroma_config import get_collection_name
         from knowledge.embedder import DrugEmbedder
         _n = DrugEmbedder().collection.count()
         st.caption(f"Label DB: `{get_collection_name()}` — **{_n}** chunks")
@@ -296,13 +302,16 @@ with st.sidebar:
     st.divider()
     packaging_type = st.radio(
         "Label type",
-        options=["cylindrical", "flat"],
-        format_func=lambda x: "Bottle / curved label (xAI Vision)"
-        if x == "cylindrical"
-        else "Flat label (PaddleOCR)",
+        options=["cylindrical", "flat", "auto"],
+        format_func=lambda x: {
+            "cylindrical": "Bottle / curved label (xAI Vision)",
+            "flat":        "Flat label (PaddleOCR)",
+            "auto":        "Auto-detect (YOLO)",
+        }[x],
         index=0,
         help="Use Bottle for curved medicine bottles like Advil. "
-             "Use Flat for boxes, blister packs, or tube labels.",
+             "Use Flat for boxes, blister packs, or tube labels. "
+             "Auto uses YOLO to classify (requires trained model).",
     )
 
 col1, col2 = st.columns([1, 1])
@@ -311,7 +320,7 @@ with col1:
     st.header("Scan Medicine")
     uploaded_file = st.file_uploader(
         "Upload a photo of your medicine label",
-        type=["jpg", "jpeg", "png"],
+        type=["jpg", "jpeg", "png", "webp", "heic", "heif"],
     )
 
     if uploaded_file:
@@ -319,46 +328,63 @@ with col1:
         st.image(img, caption="Uploaded Image", use_container_width=True)
 
         if st.button("Analyze Label"):
-            path_label = (
-                "xAI Vision on bottle label..."
-                if packaging_type == "cylindrical"
-                else "PaddleOCR on flat label..."
-            )
-            with st.spinner(path_label):
-                try:
+            suffix = Path(uploaded_file.name).suffix or ".png"
+            tmp_path = None
+            try:
+                with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+                    tmp.write(uploaded_file.getvalue())
+                    tmp_path = tmp.name
+
+                # ── Routing ───────────────────────────────────────────────────
+                if packaging_type == "auto":
+                    with st.spinner("Detecting packaging type with YOLO…"):
+                        from vision.detector import YOLORouter
+                        router   = YOLORouter()
+                        pkg, _bbox, _conf = router.detect_geometry(tmp_path)
+                        note = "" if router._trained else " *(fallback — model not trained yet)*"
+                        st.info(f"YOLO detected: **{'Flat' if pkg == 'flat' else 'Cylindrical'}**{note}")
+                else:
+                    pkg = packaging_type
+
+                path_label = (
+                    "xAI Vision on bottle label..."
+                    if pkg == "cylindrical"
+                    else "PaddleOCR on flat label..."
+                )
+                with st.spinner(path_label):
                     from vision.ocr import run_ocr
+                    result = run_ocr(tmp_path, packaging_type=pkg)
 
-                    # Save upload to a temp file so cv2 / vision API can read it
-                    suffix = Path(uploaded_file.name).suffix or ".png"
-                    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-                        tmp.write(uploaded_file.getvalue())
-                        tmp_path = tmp.name
-
-                    result = run_ocr(tmp_path, packaging_type=packaging_type)
-                    os.unlink(tmp_path)
-
-                    if "reupload_required" in result.hallucination_flags:
-                        conf_pct = int(result.confidence * 100)
-                        st.warning(
-                            f"Image quality too low to read the label reliably "
-                            f"(confidence: {conf_pct}%, threshold: 75%). "
-                            "Please retake the photo with better lighting and a "
-                            "flat, unobstructed view of the label, then re-upload."
-                        )
-                    else:
-                        st.session_state["ocr_result"] = result
-                        st.success(
-                            f"Analysis complete (confidence: {int(result.confidence * 100)}%)"
-                        )
-
-                except ImportError as exc:
-                    st.error(
-                        f"PaddleOCR is not installed: {exc}\n\n"
-                        "Run: `pip install paddleocr` and "
-                        "`pip install -r requirements-paddle.txt`"
+                if "reupload_required" in result.hallucination_flags:
+                    conf_pct = int(result.confidence * 100)
+                    st.warning(
+                        f"Image quality too low to read the label reliably "
+                        f"(confidence: {conf_pct}%, threshold: 75%). "
+                        "Please retake the photo with better lighting and a "
+                        "flat, unobstructed view of the label, then re-upload."
                     )
-                except Exception as exc:
-                    st.error(f"OCR failed: {exc}")
+                else:
+                    st.session_state["ocr_result"]         = result
+                    st.session_state["simplified_summary"] = None
+                    st.session_state["chat_history"]       = []
+                    st.success(
+                        f"Analysis complete (confidence: {int(result.confidence * 100)}%)"
+                    )
+
+            except ImportError as exc:
+                st.error(
+                    f"PaddleOCR is not installed: {exc}\n\n"
+                    "Run: `pip install paddleocr` and "
+                    "`pip install -r requirements-paddle.txt`"
+                )
+            except Exception as exc:
+                st.error(f"OCR failed: {exc}")
+            finally:
+                if tmp_path:
+                    try:
+                        os.unlink(tmp_path)
+                    except OSError:
+                        pass
 
 with col2:
     tab1, tab2, tab3 = st.tabs(["Extracted Info", "Simplified Info", "Chatbot"])
@@ -379,12 +405,26 @@ with col2:
     with tab2:
         st.subheader("Plain English Summary")
         result = st.session_state.get("ocr_result")
-        if result and result.drug_name:
-            st.info(
-                f"**{result.drug_name}**"
-                + (f" — {result.dosage}" if result.dosage else "")
-                + "\n\nSee the 'Extracted Info' tab for full label text."
-            )
+        if result:
+            cached = st.session_state.get("simplified_summary")
+            if cached:
+                st.markdown(cached)
+                if st.button("Regenerate Summary"):
+                    st.session_state["simplified_summary"] = None
+                    st.rerun()
+            else:
+                if gemini_status == "Missing":
+                    st.warning(
+                        "Gemini API key not set. "
+                        "Add `GEMINI_API_KEY=your_key` to your .env file."
+                    )
+                else:
+                    if st.button("Generate Plain-English Summary", type="primary"):
+                        with st.spinner("Asking Gemini to simplify the label…"):
+                            from agent.simplifier import simplify_label
+                            summary = simplify_label(result)
+                            st.session_state["simplified_summary"] = summary
+                        st.markdown(summary)
         else:
             st.info("Analyze a label to see a plain-English summary.")
 
