@@ -354,7 +354,7 @@ st.set_page_config(page_title="MedLabel", layout="wide")
 # ─────────────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap');
 
 :root {
   --bg:           #080D18;
@@ -776,6 +776,138 @@ div[data-testid="stDivider"] { border-color: rgba(255,255,255,0.07) !important; 
 ::-webkit-scrollbar-track { background: #080D18; }
 ::-webkit-scrollbar-thumb { background: rgba(0,212,184,0.25); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(0,212,184,0.45); }
+
+/* ── Dark theme: patch all remaining Streamlit light-bg leaks ── */
+
+/* Root containers */
+[data-testid="stAppViewContainer"],
+[data-testid="stApp"],
+.stApp, .main {
+  background-color: #080D18 !important;
+}
+
+/* Block container — Streamlit adds its own padding/bg */
+[data-testid="stMainBlockContainer"],
+[data-testid="block-container"],
+.block-container {
+  background: transparent !important;
+  padding: 0 !important;
+  max-width: 100% !important;
+}
+
+/* Every st.write / st.markdown paragraph */
+[data-testid="stMarkdownContainer"] p,
+[data-testid="stMarkdownContainer"] li,
+[data-testid="stMarkdownContainer"] h1,
+[data-testid="stMarkdownContainer"] h2,
+[data-testid="stMarkdownContainer"] h3,
+[data-testid="stMarkdownContainer"] h4,
+[data-testid="stMarkdownContainer"] code,
+.stMarkdown p, .stMarkdown li {
+  color: #E8EEFF !important;
+  font-family: 'DM Sans', sans-serif !important;
+}
+
+/* st.write plain text */
+[data-testid="stText"] {
+  color: #E8EEFF !important;
+  font-family: 'DM Sans', sans-serif !important;
+}
+
+/* Widget labels */
+label, .stSelectbox label, .stRadio label,
+[data-testid="stWidgetLabel"] p,
+[data-baseweb="label"] {
+  color: #8892A4 !important;
+  font-family: 'DM Sans', sans-serif !important;
+}
+
+/* st.info / st.success / st.warning / st.error */
+[data-testid="stNotification"],
+[data-testid="stAlert"] {
+  background: #0D1425 !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  color: #E8EEFF !important;
+}
+[data-testid="stAlert"] p { color: #E8EEFF !important; }
+
+/* st.caption */
+[data-testid="stCaptionContainer"] p,
+.stCaption, .stCaption p {
+  color: #4B5A6E !important;
+  font-family: 'DM Sans', sans-serif !important;
+}
+
+/* Text area */
+.stTextArea label { color: #8892A4 !important; }
+.stTextArea textarea {
+  background: #0D1425 !important;
+  color: #E8EEFF !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+}
+
+/* File uploader label text */
+[data-testid="stFileUploaderDropzoneInstructions"] p,
+[data-testid="stFileUploaderDropzoneInstructions"] small,
+[data-testid="stFileUploadDropzone"] p {
+  color: #8892A4 !important;
+}
+
+/* Expander header */
+[data-testid="stExpanderToggleIcon"],
+[data-testid="stExpanderDetails"],
+details summary p,
+.stExpander details summary span {
+  color: #E8EEFF !important;
+}
+
+/* Tabs */
+.stTabs [data-baseweb="tab-panel"] {
+  background: transparent !important;
+  padding-top: 20px;
+}
+
+/* Chat input area */
+[data-testid="stChatInputContainer"] {
+  background: #080D18 !important;
+  border-top: 1px solid rgba(255,255,255,0.06) !important;
+}
+[data-testid="stChatInput"] {
+  background: #0D1425 !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  border-radius: 14px !important;
+}
+
+/* Chat message avatars and text */
+[data-testid="stChatMessage"] p { color: #E8EEFF !important; }
+
+/* Metric delta */
+[data-testid="stMetricDelta"] svg { stroke: #00D4B8 !important; }
+
+/* st.divider */
+hr { border-color: rgba(255,255,255,0.07) !important; }
+
+/* Spinner text */
+[data-testid="stSpinner"] p { color: #8892A4 !important; }
+
+/* Selectbox / dropdown */
+[data-baseweb="select"] > div {
+  background: #0D1425 !important;
+  border-color: rgba(255,255,255,0.08) !important;
+  color: #E8EEFF !important;
+}
+[data-baseweb="popover"] ul {
+  background: #0D1425 !important;
+  color: #E8EEFF !important;
+}
+
+/* Code blocks */
+code, pre {
+  background: #0D1425 !important;
+  color: #00D4B8 !important;
+  border-radius: 6px;
+}
 </style>
 """, unsafe_allow_html=True)
 
