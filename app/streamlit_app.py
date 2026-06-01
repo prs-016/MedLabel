@@ -660,7 +660,13 @@ section[data-testid="stSidebar"] { display: none !important; }
 }
 
 /* ────────────────── STREAMLIT WIDGETS ────────────────── */
-.stButton > button {
+/* Primary buttons — every selector Streamlit might use */
+.stButton > button,
+.stButton > button *,
+[data-testid="stBaseButton-primary"],
+[data-testid="stBaseButton-primary"] *,
+button[kind="primary"],
+button[kind="primary"] * {
   background: var(--lime) !important;
   color: #07080D !important;
   border: none !important; border-radius: 10px !important;
@@ -670,24 +676,34 @@ section[data-testid="stSidebar"] { display: none !important; }
   transition: opacity .18s, transform .18s !important;
   padding: 0 24px !important; height: 46px !important;
 }
-.stButton > button:hover {
+.stButton > button:hover,
+[data-testid="stBaseButton-primary"]:hover {
   opacity: .88 !important;
   transform: translateY(-1px) !important;
   box-shadow: 0 6px 24px rgba(200,255,87,0.22) !important;
 }
-.stButton > button[kind="secondary"] {
+/* Secondary / ghost buttons */
+.stButton > button[kind="secondary"],
+[data-testid="stBaseButton-secondary"] {
   background: transparent !important;
   color: var(--text2) !important;
   border: 1px solid var(--border) !important;
-  box-shadow: none !important;
+  box-shadow: none !important; height: 46px !important;
 }
-.stButton > button[kind="secondary"]:hover {
+.stButton > button[kind="secondary"] *,
+[data-testid="stBaseButton-secondary"] * {
+  color: var(--text2) !important;
+}
+.stButton > button[kind="secondary"]:hover,
+[data-testid="stBaseButton-secondary"]:hover {
   border-color: rgba(255,255,255,0.2) !important;
   color: var(--text) !important;
   background: rgba(255,255,255,0.03) !important;
   transform: none !important; box-shadow: none !important;
 }
-.back-btn button {
+/* Back button */
+.back-btn button,
+.back-btn button * {
   background: transparent !important;
   color: var(--text2) !important;
   border: 1px solid var(--border) !important;
@@ -696,7 +712,8 @@ section[data-testid="stSidebar"] { display: none !important; }
   padding: 0 16px !important; height: 36px !important; border-radius: 8px !important;
   transform: none !important;
 }
-.back-btn button:hover {
+.back-btn button:hover,
+.back-btn button:hover * {
   color: var(--text) !important;
   border-color: rgba(255,255,255,0.2) !important;
   background: rgba(255,255,255,0.04) !important;
