@@ -1019,18 +1019,18 @@ if not _show_scanner:
   function wire(){
     var doc=parent.document;
     doc.querySelectorAll('a[data-scrollto]').forEach(function(a){
+      if(a._wired) return;
+      a._wired=true;
       a.addEventListener('click',function(e){
         e.preventDefault();
         var id=a.getAttribute('data-scrollto');
-        var main=doc.querySelector('[data-testid="stMain"]');
         var el=doc.getElementById(id);
-        if(main&&el) main.scrollTo({top:el.offsetTop-70,behavior:'smooth'});
+        if(el) el.scrollIntoView({behavior:'smooth',block:'start'});
       });
     });
   }
-  if(parent.document.readyState==='loading') parent.document.addEventListener('DOMContentLoaded',wire);
-  else wire();
-  setTimeout(wire,800);
+  setTimeout(wire,600);
+  setTimeout(wire,1500);
 })();
 </script>""", height=0)
 
