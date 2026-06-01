@@ -633,18 +633,20 @@ section[data-testid="stSidebar"] { display: none !important; }
 
 /* ────────────────── BOTTOM CTA ────────────────── */
 .ml-cta-section {
-  padding: 100px 7vw;
+  padding: 120px 7vw 100px;
   background: var(--bg);
   display: flex; flex-direction: column;
+  align-items: center; text-align: center;
+  border-top: 1px solid var(--border);
 }
 .ml-cta-section h2 {
   font-family: 'Cormorant Garamond', Georgia, serif;
   font-weight: 700; font-style: italic;
-  font-size: clamp(36px, 5vw, 64px);
-  color: var(--text); line-height: 1.05; margin-bottom: 12px;
-  max-width: 600px;
+  font-size: clamp(42px, 6vw, 80px);
+  color: var(--text); line-height: 1.02; margin-bottom: 16px;
+  max-width: 800px;
 }
-.ml-cta-section p { color: var(--text2); font-size: 15px; margin-bottom: 0; font-weight: 300; }
+.ml-cta-section p { color: var(--text2); font-size: 15px; margin-bottom: 40px; font-weight: 300; }
 
 /* ────────────────── FOOTER ────────────────── */
 .ml-footer {
