@@ -24,6 +24,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from api.ddinter import DDInterClient
 from api.openfda import OpenFDAClient
 from api.rxnorm import RxNormClient
+from knowledge.otc_brands import OTC_BRAND_LABELS
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +52,7 @@ COMMON_OTC_DRUGS = [
     "cetirizine",          # Zyrtec
     "dextromethorphan",    # Robitussin DM
     "doxylamine",          # NyQuil (sleep aid)
+    "phenylephrine",       # DayQuil (decongestant)
     "guaifenesin",         # Mucinex
     "pseudoephedrine",     # Sudafed / some cold meds
     "melatonin",
@@ -106,6 +108,60 @@ def _has_fda_label(records: list[dict], generic: str) -> bool:
         if g in dn or dn.startswith(g):
             return True
     return False
+
+
+def _has_brand_label(records: list[dict], canonical_name: str) -> bool:
+    """True if we already have an FDA label stored under this brand drug_name."""
+    want = _normalize_token(canonical_name)
+    for item in records:
+        meta = item.get("metadata") or {}
+        if meta.get("source") != "fda_label":
+            continue
+        dn = _normalize_token(meta.get("drug_name", ""))
+        if dn == want or want in dn:
+            return True
+    return False
+
+
+def fetch_fda_brand_records(
+    brand_queries: list[tuple[str, str]],
+    fda: OpenFDAClient,
+    *,
+    delay: float = 0.35,
+) -> list[dict]:
+    """
+    Fetch FDA labels by brand name (openFDA brand_name field).
+
+    brand_queries: list of (openFDA search term, canonical drug_name for Chroma)
+    """
+    out: list[dict] = []
+    for query, canonical in brand_queries:
+        chunks: list[dict] = []
+        for candidate in [query, canonical]:
+            chunks = fda.get_label_chunks(candidate)
+            if chunks and any(
+                c["metadata"].get("section_type") in RICH_FDA_SECTIONS
+                for c in chunks
+            ):
+                break
+            if chunks:
+                break
+
+        if not chunks:
+            logger.warning("No FDA brand label for '%s' (queried '%s')", canonical, query)
+            time.sleep(delay)
+            continue
+
+        for i, chunk in enumerate(chunks):
+            chunk["metadata"]["drug_name"] = canonical
+            chunk["metadata"]["brand_name"] = (
+                chunk["metadata"].get("brand_name") or query
+            )
+            out.append(_make_fda_record(chunk, i))
+
+        logger.info("FDA brand: %s → %d sections", canonical, len(chunks))
+        time.sleep(delay)
+    return out
 
 
 def _has_rich_fda_label(records: list[dict], generic: str) -> bool:
@@ -283,9 +339,26 @@ def expand_common_drugs(
     new_fda: list[dict] = []
     new_ddi: list[dict] = []
 
+    brands_to_fetch = [
+        (query, display)
+        for query, display in OTC_BRAND_LABELS
+        if not _has_brand_label(existing, display)
+    ]
+    if brands_to_fetch:
+        logger.info(
+            "Brand labels to fetch: %s",
+            ", ".join(d for _, d in brands_to_fetch),
+        )
+    else:
+        logger.info("All common OTC brand labels already present in drugs.json")
+
     if not skip_fda and to_fetch:
-        logger.info("Fetching FDA labels for %d drugs...", len(to_fetch))
+        logger.info("Fetching FDA labels for %d generics...", len(to_fetch))
         new_fda = fetch_fda_records(to_fetch, rxnorm, fda)
+
+    if not skip_fda and brands_to_fetch:
+        logger.info("Fetching FDA labels for %d OTC brands...", len(brands_to_fetch))
+        new_fda.extend(fetch_fda_brand_records(brands_to_fetch, fda))
 
     if not skip_ddi:
         logger.info("Fetching DDInter batches...")
@@ -310,6 +383,7 @@ def expand_common_drugs(
         "fda_added": len(new_fda),
         "ddi_added": len(new_ddi),
         "fda_fetched_for": to_fetch,
+        "brands_fetched_for": [d for _, d in brands_to_fetch],
     }
 
 
@@ -331,12 +405,17 @@ def main(argv: Optional[list[str]] = None) -> None:
         f"(+{stats['fda_added']} FDA, +{stats['ddi_added']} DDInter)"
     )
     if stats["fda_fetched_for"]:
-        print("FDA fetched for:", ", ".join(stats["fda_fetched_for"]))
+        print("FDA generics fetched for:", ", ".join(stats["fda_fetched_for"]))
+    if stats.get("brands_fetched_for"):
+        print("FDA brands fetched for:", ", ".join(stats["brands_fetched_for"]))
 
     if args.ingest:
         from knowledge.ingest_data import ingest_json_to_chroma
+        from knowledge.query_functions import clear_drug_name_index_cache
+
         print("\nRe-ingesting into ChromaDB (this may take ~30 min)...")
         ingest_json_to_chroma(reset=True)
+        clear_drug_name_index_cache()
 
 
 if __name__ == "__main__":

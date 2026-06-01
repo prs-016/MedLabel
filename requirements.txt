@@ -8,6 +8,7 @@ paddleocr>=2.7,<4
 # Computer Vision
 ultralytics>=8.3.0       # YOLOv11
 pillow                   # Image handling
+pillow-heif              # iPhone HEIC/HEIF photos in Streamlit + OCR
 
 # AI & LLM
 google-generativeai>=0.3.0        # Gemini 2.5 Flash (Path B OCR + Simplifier)

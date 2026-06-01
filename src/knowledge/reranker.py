@@ -12,10 +12,16 @@ cross-encoder only -- rankings are still correct.
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Optional
 
 logger = logging.getLogger(__name__)
+
+_ROOT = Path(__file__).resolve().parents[2]
+_DEFAULT_BGE_RERANKER = "BAAI/bge-reranker-v2-m3"
+_LOCAL_BGE_RERANKER = _ROOT / "models" / "cache" / "bge-reranker-v2-m3"
 
 _bge_reranker  = None
 # Cache cross-encoders per model name so multiple fine-tuned models
@@ -23,13 +29,37 @@ _bge_reranker  = None
 _cross_encoders: dict = {}
 
 
-def _get_bge_reranker(model_name: str = "BAAI/bge-reranker-v2-m3"):
+def _resolve_bge_model_path(model_name: str) -> str:
+    """Prefer local checkout so Hugging Face offline mode still works."""
+    env_path = os.getenv("MEDLABEL_BGE_RERANKER_PATH", "").strip()
+    if env_path and os.path.isdir(env_path):
+        return env_path
+    if _LOCAL_BGE_RERANKER.is_dir() and any(_LOCAL_BGE_RERANKER.glob("*.safetensors")):
+        return str(_LOCAL_BGE_RERANKER)
+    return model_name
+
+
+def _bge_use_fp16() -> bool:
+    try:
+        import torch
+        return torch.cuda.is_available()
+    except Exception:
+        return False
+
+
+def _get_bge_reranker(model_name: str = _DEFAULT_BGE_RERANKER):
     global _bge_reranker
+    if os.getenv("MEDLABEL_SKIP_BGE_RERANKER", "").strip().lower() in (
+        "1", "true", "yes",
+    ):
+        return None
     if _bge_reranker is None:
         try:
             from FlagEmbedding import FlagReranker
-            logger.info("Loading BGE reranker: %s", model_name)
-            _bge_reranker = FlagReranker(model_name, use_fp16=True)
+
+            path = _resolve_bge_model_path(model_name)
+            logger.info("Loading BGE reranker from %s", path)
+            _bge_reranker = FlagReranker(path, use_fp16=_bge_use_fp16())
             logger.info("BGE reranker loaded.")
         except Exception as exc:
             logger.warning(

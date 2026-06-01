@@ -24,6 +24,7 @@ env/
 # Models (large files)
 models/yolo/*.pt
 models/embeddings/*
+models/cache/
 !models/embeddings/.gitkeep
 
 # Data (large files)
@@ -37,6 +38,7 @@ data/processed/*
 
 # ChromaDB local storage
 # medlabel_db/ committed to git so Streamlit Cloud has it
+medlabel_db.tar.gz
 chroma_db/
 _DEFAULT_DB/
 drug_db/
