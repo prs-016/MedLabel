@@ -380,7 +380,8 @@ body, .stApp, .main, [data-testid="stAppViewContainer"] {
   color: var(--text) !important;
 }
 
-#MainMenu, header[data-testid="stHeader"], footer,
+#MainMenu, header[data-testid="stHeader"],
+footer:not(.ml-footer),
 .stDeployButton, [data-testid="collapsedControl"],
 section[data-testid="stSidebar"] { display: none !important; }
 
@@ -650,12 +651,13 @@ section[data-testid="stSidebar"] { display: none !important; }
 .ml-cta-section p { color: var(--text2); font-size: 15px; margin-bottom: 40px; font-weight: 300; }
 
 /* ────────────────── FOOTER ────────────────── */
-.ml-footer {
+footer.ml-footer, .ml-footer {
   padding: 32px 7vw;
   border-top: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: space-between;
+  display: flex !important; align-items: center; justify-content: space-between;
   flex-wrap: wrap; gap: 12px;
   background: var(--surface);
+  width: 100%;
 }
 .ml-footer-left { font-size: 13px; color: var(--text3); }
 .ml-footer-right { font-size: 12px; color: var(--text3); font-style: italic; }
