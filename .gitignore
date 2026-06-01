@@ -24,6 +24,7 @@ env/
 # Models (large files)
 models/yolo/*.pt
 models/embeddings/*
+models/cache/
 !models/embeddings/.gitkeep
 
 # Data (large files)
