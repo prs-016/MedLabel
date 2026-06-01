@@ -32,11 +32,15 @@ def train_custom_reranker():
     model = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2", num_labels=1)
 
     device = "mps" if torch.backends.mps.is_available() else "cpu"
+    if torch.cuda.is_available():
+        device = "cuda"
     model.model.to(device)
     print(f"Training on device: {device.upper()}")
 
     # 🚨 FIX 1: Ensure the directory actually exists before we try to save to it
     os.makedirs(MODEL_OUTPUT_PATH, exist_ok=True)
+
+    use_amp = device == "cuda"
 
     print("\nStarting training (this might take a few minutes)...")
     model.fit(
@@ -44,7 +48,7 @@ def train_custom_reranker():
         epochs=3,           
         warmup_steps=10,    
         output_path=MODEL_OUTPUT_PATH,
-        use_amp=True        
+        use_amp=use_amp,
     )
 
     # 🚨 FIX 2: Explicitly force the model to save its weights to the hard drive!

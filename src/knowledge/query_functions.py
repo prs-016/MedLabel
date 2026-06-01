@@ -46,11 +46,13 @@ _ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 # Fine-tuned cross-encoders dedicated to specific query functions.
 _VECTOR_SEARCH_MODEL_PATH  = os.path.join(_ROOT_DIR, "models", "vector_search_reranker")
 _ADVERSE_EVENTS_MODEL_PATH = os.path.join(_ROOT_DIR, "models", "adverse_events_reranker")
+_INTERACTION_MODEL_PATH    = os.path.join(_ROOT_DIR, "models", "medlabel_reranker")
 
 _embedder:               Optional[DrugEmbedder]     = None
 _reranker:               Optional[TwoStageReranker] = None
 _vector_search_reranker: Optional[TwoStageReranker] = None
 _adverse_events_reranker: Optional[TwoStageReranker] = None
+_interaction_reranker:   Optional[TwoStageReranker] = None
 
 
 def _make_finetuned_reranker(
@@ -101,6 +103,16 @@ def _get_adverse_events_reranker() -> TwoStageReranker:
             _ADVERSE_EVENTS_MODEL_PATH, "adverse_events"
         )
     return _adverse_events_reranker
+
+
+def _get_interaction_reranker() -> TwoStageReranker:
+    """Reranker for interaction_check (Akshay medlabel_reranker if available)."""
+    global _interaction_reranker
+    if _interaction_reranker is None:
+        _interaction_reranker = _make_finetuned_reranker(
+            _INTERACTION_MODEL_PATH, "interaction_check"
+        )
+    return _interaction_reranker
 
 
 def _search_and_rerank(
@@ -156,18 +168,27 @@ _drug_name_index: Optional[list] = None
 
 
 def _all_stored_drug_names(db_path: Optional[str] = None) -> list:
-    """Distinct drug_name values present in the collection (cached)."""
+    """Distinct drug_name / brand_name values in the collection (cached)."""
     global _drug_name_index
     if _drug_name_index is None:
         emb  = _get_embedder(db_path)
         data = emb.collection.get(include=["metadatas"])
-        names = {
-            m.get("drug_name", "")
-            for m in data.get("metadatas", [])
-            if m and m.get("drug_name")
-        }
+        names: set[str] = set()
+        for m in data.get("metadatas", []) or []:
+            if not m:
+                continue
+            for key in ("drug_name", "brand_name"):
+                val = (m.get(key) or "").strip()
+                if val:
+                    names.add(val)
         _drug_name_index = sorted(names)
     return _drug_name_index
+
+
+def clear_drug_name_index_cache() -> None:
+    """Call after re-ingest so filters see new brand labels."""
+    global _drug_name_index
+    _drug_name_index = None
 
 
 def _matching_drug_names(drug_name: str, db_path: Optional[str] = None) -> list:
@@ -187,12 +208,32 @@ def _resolve_drug_filter(
     Build a ChromaDB drug_name $in filter for one drug query.
     Returns None when nothing matches, so the search falls back to a
     pure semantic lookup rather than returning zero results.
+
+    OTC brands (DayQuil, NyQuil, …) use brand-only chunks when present;
+    ingredient labels are used only if no brand label exists in Chroma.
     """
-    matches = _matching_drug_names(drug_name, db_path)
-    if matches:
-        return {"drug_name": {"$in": matches}}
+    from knowledge.otc_brands import canonical_brand_for_query, ingredient_tokens_for_brand
+
+    canonical = canonical_brand_for_query(drug_name)
+    if canonical:
+        # Exact drug_name row (e.g. "NyQuil") — avoid diluting with all acetaminophen labels.
+        exact = [n for n in _matching_drug_names(canonical, db_path) if n == canonical]
+        if exact:
+            logger.info(
+                "Drug filter: brand-only '%s' → %s", drug_name, exact
+            )
+            return {"drug_name": {"$in": exact}}
+
+    all_matches: set[str] = set()
+    for token in ingredient_tokens_for_brand(drug_name):
+        all_matches.update(_matching_drug_names(token, db_path))
+
+    if all_matches:
+        return {"drug_name": {"$in": sorted(all_matches)}}
+
     logger.warning(
-        "No stored drug_name contains '%s' -- searching without drug filter.",
+        "No stored drug_name contains '%s' (or OTC ingredients) "
+        "-- searching without drug filter.",
         _normalize_drug_name(drug_name),
     )
     return None
@@ -278,6 +319,7 @@ def _supplement_interaction_pair(
     path: str,
     top_n: int,
     n_fetch: int,
+    reranker: TwoStageReranker,
 ) -> list[RankedChunk]:
     """
     When pair-specific DDI text is missing, pull warnings/interactions for
@@ -306,6 +348,7 @@ def _supplement_interaction_pair(
             top_n=max(2, top_n // 2),
             where=where,
             db_path=path,
+            reranker=reranker,
         ))
     return _dedupe_ranked(out)[:top_n]
 
@@ -418,6 +461,7 @@ def interaction_check(
         query = f"{drug_a} drug interactions contraindications warnings"
 
     path = _resolve_db_path(db_path)
+    ic_reranker = _get_interaction_reranker()
 
     if drug_b:
         names = list({
@@ -452,7 +496,8 @@ def interaction_check(
             clauses.append(drug_filter)
         where = _build_where(clauses)
         return _search_and_rerank(
-            query, n_fetch=n_fetch, top_n=top_n, where=where, db_path=path
+            query, n_fetch=n_fetch, top_n=top_n, where=where, db_path=path,
+            reranker=ic_reranker,
         )
 
     ranked = _run(_INTERACTION_SECTIONS)
@@ -470,6 +515,7 @@ def interaction_check(
             top_n=top_n,
             where=_build_where(clauses),
             db_path=path,
+            reranker=ic_reranker,
         )
     if not ranked:
         logger.info(
@@ -477,7 +523,8 @@ def interaction_check(
             drug_a, drug_b,
         )
         ranked = _search_and_rerank(
-            query, n_fetch=n_fetch, top_n=top_n, where=None, db_path=path
+            query, n_fetch=n_fetch, top_n=top_n, where=None, db_path=path,
+            reranker=ic_reranker,
         )
 
     if drug_b:
@@ -493,7 +540,8 @@ def interaction_check(
 
     if drug_b and len(ranked) < top_n:
         extra = _supplement_interaction_pair(
-            drug_a, drug_b, query, path=path, top_n=top_n, n_fetch=n_fetch
+            drug_a, drug_b, query, path=path, top_n=top_n, n_fetch=n_fetch,
+            reranker=ic_reranker,
         )
         ranked = _dedupe_ranked(ranked + extra)
 
