@@ -109,12 +109,22 @@ class OpenFDAClient:
                 score += (len(priority) - i) * 10 + sum(len(v) for v in val) // 500
         return score
 
+    def _brand_match_bonus(self, raw: dict, query: str) -> int:
+        """Boost results whose openfda.brand_name contains the query token."""
+        token = (query or "").strip().upper()
+        if not token:
+            return 0
+        for brand in raw.get("openfda", {}).get("brand_name", []) or []:
+            if token in str(brand).upper():
+                return 5000
+        return 0
+
     def get_label(self, drug_name: str) -> Optional[DrugLabel]:
         searches = [
-            f'openfda.generic_name:"{drug_name}"',
-            f'openfda.generic_name:{drug_name}',
             f'openfda.brand_name:"{drug_name}"',
             f'openfda.brand_name:{drug_name}',
+            f'openfda.generic_name:"{drug_name}"',
+            f'openfda.generic_name:{drug_name}',
         ]
         best_raw: Optional[dict] = None
         best_score = -1
@@ -124,11 +134,11 @@ class OpenFDAClient:
             if not data or not data.get("results"):
                 continue
             for raw in data["results"]:
-                score = self._label_richness(raw)
+                score = self._brand_match_bonus(raw, drug_name) + self._label_richness(raw)
                 if score > best_score:
                     best_score = score
                     best_raw = raw
-            if best_score > 0:
+            if best_score >= 5000:
                 break
         if best_raw:
             return self._parse_label(best_raw)

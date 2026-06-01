@@ -13,11 +13,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 load_dotenv()
 
-# Merge Streamlit Cloud secrets into os.environ so all downstream code
-# (which reads os.getenv) works identically in local and cloud environments.
-for _k, _v in st.secrets.items():
-    if isinstance(_v, str):
-        os.environ.setdefault(_k, _v)
+# Merge Streamlit Cloud secrets into os.environ (no-op when secrets.toml is absent).
+try:
+    for _k, _v in st.secrets.items():
+        if isinstance(_v, str):
+            os.environ.setdefault(_k, _v)
+except Exception:
+    pass
 
 # Common OTC brand -> generic, so questions like "take with Advil" resolve.
 _BRAND_TO_GENERIC = {
@@ -692,16 +694,33 @@ else:
         )
 
         if uploaded_file:
-            img = PIL.Image.open(uploaded_file)
-            st.image(img, caption="Uploaded image", use_container_width=True)
+            raw = uploaded_file.getvalue()
+            fname = uploaded_file.name
+            img = None
+            try:
+                from vision.image_io import open_image
 
-            if st.button("Analyze Label", type="primary", use_container_width=True):
-                suffix = Path(uploaded_file.name).suffix or ".png"
+                img = open_image(data=raw, filename=fname)
+            except ImportError as exc:
+                st.error(str(exc))
+            except Exception as exc:
+                st.error(f"Could not open image: {exc}")
+
+            if img is not None:
+                st.image(img, caption="Uploaded image", use_container_width=True)
+
+            if img is not None and st.button("Analyze Label", type="primary", use_container_width=True):
                 tmp_path = None
                 try:
-                    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-                        tmp.write(uploaded_file.getvalue())
-                        tmp_path = tmp.name
+                    from vision.image_io import materialize_upload, needs_heif
+
+                    if needs_heif(fname, raw):
+                        tmp_path = materialize_upload(raw, fname, for_opencv=True)
+                    else:
+                        suffix = Path(fname).suffix or ".png"
+                        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+                            tmp.write(raw)
+                            tmp_path = tmp.name
 
                     if packaging_type == "auto":
                         with st.spinner("Detecting packaging type with YOLO…"):

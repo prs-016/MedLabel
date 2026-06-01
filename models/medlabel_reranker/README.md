@@ -6,23 +6,21 @@ tags:
 - generated_from_trainer
 - dataset_size:100
 - loss:BinaryCrossEntropyLoss
-base_model: cross-encoder/ms-marco-MiniLM-L6-v2
 pipeline_tag: text-ranking
 library_name: sentence-transformers
 ---
 
-# CrossEncoder based on cross-encoder/ms-marco-MiniLM-L6-v2
+# CrossEncoder
 
-This is a [Cross Encoder](https://www.sbert.net/docs/cross_encoder/usage/usage.html) model finetuned from [cross-encoder/ms-marco-MiniLM-L6-v2](https://huggingface.co/cross-encoder/ms-marco-MiniLM-L6-v2) using the [sentence-transformers](https://www.SBERT.net) library. It computes scores for pairs of texts, which can be used for text reranking and semantic search.
+This is a [Cross Encoder](https://www.sbert.net/docs/cross_encoder/usage/usage.html) model trained using the [sentence-transformers](https://www.SBERT.net) library. It computes scores for pairs of texts, which can be used for text reranking and semantic search.
 
 ## Model Details
 
 ### Model Description
 - **Model Type:** Cross Encoder
-- **Base model:** [cross-encoder/ms-marco-MiniLM-L6-v2](https://huggingface.co/cross-encoder/ms-marco-MiniLM-L6-v2) <!-- at revision c5ee24cb16019beea0893ab7796b1df96625c6b8 -->
+<!-- - **Base model:** [Unknown](https://huggingface.co/unknown) -->
 - **Maximum Sequence Length:** 512 tokens
 - **Number of Output Labels:** 1 label
-- **Supported Modality:** Text
 <!-- - **Training Dataset:** Unknown -->
 <!-- - **Language:** Unknown -->
 <!-- - **License:** Unknown -->
@@ -33,14 +31,6 @@ This is a [Cross Encoder](https://www.sbert.net/docs/cross_encoder/usage/usage.h
 - **Documentation:** [Cross Encoder Documentation](https://www.sbert.net/docs/cross_encoder/usage/usage.html)
 - **Repository:** [Sentence Transformers on GitHub](https://github.com/huggingface/sentence-transformers)
 - **Hugging Face:** [Cross Encoders on Hugging Face](https://huggingface.co/models?library=sentence-transformers&other=cross-encoder)
-
-### Full Model Architecture
-
-```
-CrossEncoder(
-  (0): Transformer({'transformer_task': 'sequence-classification', 'modality_config': {'text': {'method': 'forward', 'method_output_name': 'logits'}}, 'module_output_name': 'scores', 'architecture': 'BertForSequenceClassification'})
-)
-```
 
 ## Usage
 
@@ -58,27 +48,27 @@ from sentence_transformers import CrossEncoder
 
 # Download from the 🤗 Hub
 model = CrossEncoder("cross_encoder_model_id")
-# Get scores for pairs of inputs
+# Get scores for pairs of texts
 pairs = [
-    ['What specific congenital malformations result from first-trimester warfarin exposure according to well-controlled studies?', '8 USE IN SPECIFIC POPULATIONS Pregnant women with mechanical heart valves: Warfarin sodium may cause fetal harm; however, the benefits may outweigh the risks. ( 8.1 ) Lactation: Monitor breastfeeding infants for bruising or bleeding. ( 8.2 ) Renal Impairment: Instruct patients with renal impairment to frequently monitor their INR. ( 8.6 ) 8.1 Pregnancy Risk Summary Warfarin sodium is contraindicated in women who are pregnant except in pregnant women with mechanical heart valves, who are at high risk of thromboembolism, and for whom the benefits of warfarin sodium may outweigh the risks [see Warnings and Precautions ( 5.7 )] . Warfarin sodium can cause fetal harm. Exposure to warfarin during the first trimester of pregnancy caused a pattern of congenital malformations in about 5% of exposed offspring. Because these data were not collected in adequate and well-controlled studies, this incidence of major birth defects is not an adequate basis for comparison to the estimated incidences in the control group or the U.S. general population and may not reflect the incidences observed in practice. Consider the benefits and risks of warfarin sodium and possible risks to the fetus when prescribing warfarin sodium to a pregnant woman. Adverse outcomes in pregnancy'],
-    ['What are the indications for Warfarin sodium tablets including prophylaxis and treatment of venous thrombosis, pulmonary embolism, atrial fibrillation complications, and post-myocardial infarction events?', '1 INDICATIONS AND USAGE Warfarin sodium tablets are indicated for: Prophylaxis and treatment of venous thrombosis and its extension, pulmonary embolism (PE). Prophylaxis and treatment of thromboembolic complications associated with atrial fibrillation (AF) and/or cardiac valve replacement. Reduction in the risk of death, recurrent myocardial infarction (MI), and thromboembolic events such as stroke or systemic embolization after myocardial infarction. Limitations of Use Warfarin sodium tablets have no direct effect on an established thrombus, nor does it reverse ischemic tissue damage. Once a thrombus has occurred, however, the goals of anticoagulant treatment are to prevent further extension of the formed clot and to prevent secondary thromboembolic complications that may result in serious and possibly fatal sequelae. Warfarin sodium tablets are a vitamin K antagonist indicated for: Prophylaxis and treatment of venous thrombosis and its extension, pulmonary embolism ( 1 ) Prophylaxis and treatment of thromboembolic complications associated with atrial fibrillation and/or cardiac valve replacement ( 1 ) Reduction in the risk of death, recurrent myocardial infarction, and thromboembolic events such as stroke or systemic embolization after myocardial infarction ( 1 ) Limitations of Use Warfarin sodium tablets have no direct effect on an established thrombus, nor does it reverse ischemic tissue'],
-    ['What target INR range is recommended for warfarin therapy in patients with a bileaflet mechanical valve in the aortic position who are in sinus rhythm without left atrial enlargement?', 'and prosthetic heart valves, long-term anticoagulation with warfarin is recommended; the target INR may be increased and aspirin added depending on valve type and position, and on patient factors. Mechanical and Bioprosthetic Heart Valves For patients with a bileaflet mechanical valve or a Medtronic Hall (Minneapolis, MN) tilting disk valve in the aortic position who are in sinus rhythm and without left atrial enlargement, therapy with warfarin to a target INR of 2.5 (range, 2 to 3) is recommended. For patients with tilting disk valves and bileaflet mechanical valves in the mitral position, therapy with warfarin to a target INR of 3 (range, 2.5 to 3.5) is recommended. For patients with caged ball or caged disk valves, therapy with warfarin to a target INR of 3 (range, 2.5 to 3.5) is recommended. For patients with a bioprosthetic valve in the mitral position, therapy with warfarin to a target INR of 2.5 (range, 2 to 3) for the first 3 months after valve insertion is recommended. If additional risk factors for thromboembolism are present (AF, previous thromboembolism, left ventricular dysfunction), a target INR of 2.5 (range 2 to 3) is recommended. Post-Myocardial Infarction For high-risk patients with MI (e.g., those with'],
-    ['What dosage of sodium tablets should be taken daily?', 'sodium tablets.'],
-    ['What are the limitations of use for Warfarin sodium tablets regarding an established thrombus or ischemic tissue damage?', 'cardiac valve replacement ( 1 ) Reduction in the risk of death, recurrent myocardial infarction, and thromboembolic events such as stroke or systemic embolization after myocardial infarction ( 1 ) Limitations of Use Warfarin sodium tablets have no direct effect on an established thrombus, nor does it reverse ischemic tissue damage. ( 1 )'],
+    ['What specific changes in INR occur when patients take warfarin together with rifampin?', 'telithromycin, tipranavir, voriconazole, zileuton armodafinil, amprenavir, aprepitant, bosentan, carbamazepine, efavirenz, etravirine, modafinil, nafcillin, phenytoin, pioglitazone, prednisone, rifampin, rufinamide 7.3 Drugs that Increase Bleeding Risk Examples of drugs known to increase the risk of bleeding are presented in Table 3 . Because bleeding risk is increased when these drugs are used concomitantly with warfarin, closely monitor patients receiving any such drug with warfarin. Table 3: Drugs that Can Increase the Risk of Bleeding Drug Class Specific Drugs Anticoagulants argatroban, dabigatran, bivalirudin, desirudin, heparin, lepirudin Antiplatelet Agents aspirin, cilostazol, clopidogrel, dipyridamole, prasugrel, ticlopidine Non-steroidal Anti-Inflammatory Agents celecoxib, diclofenac, diflunisal, fenoprofen, ibuprofen, indomethacin, ketoprofen, ketorolac, mefenamic acid, naproxen, oxaprozin, piroxicam, sulindac Serotonin Reuptake Inhibitors citalopram, desvenlafaxine, duloxetine, escitalopram, fluoxetine, fluvoxamine, milnacipran, paroxetine, sertraline, venlafaxine, vilazodone 7.4 Antibiotics and Antifungals There have been reports of changes in INR in patients taking warfarin and antibiotics or antifungals, but clinical pharmacokinetic studies have not shown consistent effects of these agents on plasma concentrations of warfarin. Closely monitor INR when starting or stopping any antibiotic or antifungal in patients taking warfarin. 7.5 Botanical (Herbal) Products and Foods More frequent INR monitoring should be performed when starting or stopping botanicals. Few adequate, well-controlled studies evaluating the potential for'],
+    ['What specific numerical values define the therapeutic INR range for warfarin therapy?', 'used in this table. Other co-inherited VKORC1 variants may also be important determinants of warfarin dose. 2.4 Monitoring to Achieve Optimal Anticoagulation Warfarin sodium tablets have a narrow therapeutic range (index), and their action may be affected by factors such as other drugs and dietary vitamin K. Therefore, anticoagulation must be carefully monitored during warfarin sodium tablets therapy. Determine the INR daily after the administration of the initial dose until INR results stabilize in the therapeutic range. After stabilization, maintain dosing within the therapeutic range by performing periodic INRs. The frequency of performing INR should be based on the clinical situation but generally acceptable intervals for INR determinations are 1 to 4 weeks. Perform additional INR tests when other warfarin products are interchanged with warfarin sodium tablets, as well as whenever other medications are initiated, discontinued, or taken irregularly. Heparin, a common concomitant drug, increases the INR [see Dosage and Administration ( 2.8 ) and Drug Interactions ( 7 )] . Determinations of whole blood clotting and bleeding times are not effective measures for monitoring of warfarin sodium tablets therapy. 2.5 Renal Impairment No dosage adjustment is necessary for patients with renal failure. Monitor INR more frequently in patients with'],
+    ['Which specific antibiotics inhibit CYP3A4 and increase bleeding risk with warfarin sodium?', '7 DRUG INTERACTIONS Concomitant use of drugs that increase bleeding risk, antibiotics, antifungals, botanical (herbal) products, and inhibitors and inducers of CYP2C9, 1A2, or 3A4. ( 7 ) Consult labeling of all concurrently used drugs for complete information about interactions with warfarin sodium or increased risks for bleeding. ( 7 ) 7.1 General Information Drugs may interact with warfarin sodium through pharmacodynamic or pharmacokinetic mechanisms. Pharmacodynamic mechanisms for drug interactions with warfarin sodium are synergism (impaired hemostasis, reduced clotting factor synthesis), competitive antagonism (vitamin K), and alteration of the physiologic control loop for vitamin K metabolism (hereditary resistance). Pharmacokinetic mechanisms for drug interactions with warfarin sodium are mainly enzyme induction, enzyme inhibition, and reduced plasma protein binding. It is important to note that some drugs may interact by more than one mechanism. More frequent INR monitoring should be performed when starting or stopping other drugs, including botanicals, or when changing dosages of other drugs, including drugs intended for short-term use (e.g., antibiotics, antifungals, corticosteroids) [ see Boxed Warning ]. Consult the labeling of all concurrently used drugs to obtain further information about interactions with warfarin sodium or adverse reactions pertaining to bleeding. 7.2 CYP450 Interactions CYP450 isozymes involved in the'],
+    ['What citation number is given for the mention of bleeding?', 'of bleeding. ( 17 )'],
+    ['What specific numerical maintenance dose ranges does Table 1 list for each CYP2C9 and VKORC1 genotype combination?', 'formation. Individualize the duration of therapy for each patient. In general, anticoagulant therapy should be continued until the danger of thrombosis and embolism has passed [see Dosage and Administration ( 2.2 )] . Dosing Recommendations without Consideration of Genotype If the patient’s CYP2C9 and VKORC1 genotypes are not known, the initial dose of warfarin sodium tablets is usually 2 to 5 mg once daily. Determine each patient’s dosing needs by close monitoring of the INR response and consideration of the indication being treated. Typical maintenance doses are 2 to 10 mg once daily. Dosing Recommendations with Consideration of Genotype Table 1 displays three ranges of expected maintenance warfarin sodium tablets doses observed in subgroups of patients having different combinations of CYP2C9 and VKORC1 gene variants [see Clinical Pharmacology ( 12.5 )] . If the patient’s CYP2C9 and/or VKORC1 genotype are known, consider these ranges in choosing the initial dose. Patients with CYP2C9 *1/*3, *2/*2, *2/*3, and *3/*3 may require more prolonged time (> 2 to 4 weeks) to achieve maximum INR effect for a given dosage regimen than patients without these CYP variants. Table 1: Three Ranges of Expected Maintenance Warfarin Sodium Tablets Daily Doses Based on CYP2C9 and VKORC1'],
 ]
 scores = model.predict(pairs)
-print(scores)
-# [-2.041   6.6641  4.8281 -3.2734  5.2812]
+print(scores.shape)
+# (5,)
 
 # Or rank different texts based on similarity to a single text
 ranks = model.rank(
-    'What specific congenital malformations result from first-trimester warfarin exposure according to well-controlled studies?',
+    'What specific changes in INR occur when patients take warfarin together with rifampin?',
     [
-        '8 USE IN SPECIFIC POPULATIONS Pregnant women with mechanical heart valves: Warfarin sodium may cause fetal harm; however, the benefits may outweigh the risks. ( 8.1 ) Lactation: Monitor breastfeeding infants for bruising or bleeding. ( 8.2 ) Renal Impairment: Instruct patients with renal impairment to frequently monitor their INR. ( 8.6 ) 8.1 Pregnancy Risk Summary Warfarin sodium is contraindicated in women who are pregnant except in pregnant women with mechanical heart valves, who are at high risk of thromboembolism, and for whom the benefits of warfarin sodium may outweigh the risks [see Warnings and Precautions ( 5.7 )] . Warfarin sodium can cause fetal harm. Exposure to warfarin during the first trimester of pregnancy caused a pattern of congenital malformations in about 5% of exposed offspring. Because these data were not collected in adequate and well-controlled studies, this incidence of major birth defects is not an adequate basis for comparison to the estimated incidences in the control group or the U.S. general population and may not reflect the incidences observed in practice. Consider the benefits and risks of warfarin sodium and possible risks to the fetus when prescribing warfarin sodium to a pregnant woman. Adverse outcomes in pregnancy',
-        '1 INDICATIONS AND USAGE Warfarin sodium tablets are indicated for: Prophylaxis and treatment of venous thrombosis and its extension, pulmonary embolism (PE). Prophylaxis and treatment of thromboembolic complications associated with atrial fibrillation (AF) and/or cardiac valve replacement. Reduction in the risk of death, recurrent myocardial infarction (MI), and thromboembolic events such as stroke or systemic embolization after myocardial infarction. Limitations of Use Warfarin sodium tablets have no direct effect on an established thrombus, nor does it reverse ischemic tissue damage. Once a thrombus has occurred, however, the goals of anticoagulant treatment are to prevent further extension of the formed clot and to prevent secondary thromboembolic complications that may result in serious and possibly fatal sequelae. Warfarin sodium tablets are a vitamin K antagonist indicated for: Prophylaxis and treatment of venous thrombosis and its extension, pulmonary embolism ( 1 ) Prophylaxis and treatment of thromboembolic complications associated with atrial fibrillation and/or cardiac valve replacement ( 1 ) Reduction in the risk of death, recurrent myocardial infarction, and thromboembolic events such as stroke or systemic embolization after myocardial infarction ( 1 ) Limitations of Use Warfarin sodium tablets have no direct effect on an established thrombus, nor does it reverse ischemic tissue',
-        'and prosthetic heart valves, long-term anticoagulation with warfarin is recommended; the target INR may be increased and aspirin added depending on valve type and position, and on patient factors. Mechanical and Bioprosthetic Heart Valves For patients with a bileaflet mechanical valve or a Medtronic Hall (Minneapolis, MN) tilting disk valve in the aortic position who are in sinus rhythm and without left atrial enlargement, therapy with warfarin to a target INR of 2.5 (range, 2 to 3) is recommended. For patients with tilting disk valves and bileaflet mechanical valves in the mitral position, therapy with warfarin to a target INR of 3 (range, 2.5 to 3.5) is recommended. For patients with caged ball or caged disk valves, therapy with warfarin to a target INR of 3 (range, 2.5 to 3.5) is recommended. For patients with a bioprosthetic valve in the mitral position, therapy with warfarin to a target INR of 2.5 (range, 2 to 3) for the first 3 months after valve insertion is recommended. If additional risk factors for thromboembolism are present (AF, previous thromboembolism, left ventricular dysfunction), a target INR of 2.5 (range 2 to 3) is recommended. Post-Myocardial Infarction For high-risk patients with MI (e.g., those with',
-        'sodium tablets.',
-        'cardiac valve replacement ( 1 ) Reduction in the risk of death, recurrent myocardial infarction, and thromboembolic events such as stroke or systemic embolization after myocardial infarction ( 1 ) Limitations of Use Warfarin sodium tablets have no direct effect on an established thrombus, nor does it reverse ischemic tissue damage. ( 1 )',
+        'telithromycin, tipranavir, voriconazole, zileuton armodafinil, amprenavir, aprepitant, bosentan, carbamazepine, efavirenz, etravirine, modafinil, nafcillin, phenytoin, pioglitazone, prednisone, rifampin, rufinamide 7.3 Drugs that Increase Bleeding Risk Examples of drugs known to increase the risk of bleeding are presented in Table 3 . Because bleeding risk is increased when these drugs are used concomitantly with warfarin, closely monitor patients receiving any such drug with warfarin. Table 3: Drugs that Can Increase the Risk of Bleeding Drug Class Specific Drugs Anticoagulants argatroban, dabigatran, bivalirudin, desirudin, heparin, lepirudin Antiplatelet Agents aspirin, cilostazol, clopidogrel, dipyridamole, prasugrel, ticlopidine Non-steroidal Anti-Inflammatory Agents celecoxib, diclofenac, diflunisal, fenoprofen, ibuprofen, indomethacin, ketoprofen, ketorolac, mefenamic acid, naproxen, oxaprozin, piroxicam, sulindac Serotonin Reuptake Inhibitors citalopram, desvenlafaxine, duloxetine, escitalopram, fluoxetine, fluvoxamine, milnacipran, paroxetine, sertraline, venlafaxine, vilazodone 7.4 Antibiotics and Antifungals There have been reports of changes in INR in patients taking warfarin and antibiotics or antifungals, but clinical pharmacokinetic studies have not shown consistent effects of these agents on plasma concentrations of warfarin. Closely monitor INR when starting or stopping any antibiotic or antifungal in patients taking warfarin. 7.5 Botanical (Herbal) Products and Foods More frequent INR monitoring should be performed when starting or stopping botanicals. Few adequate, well-controlled studies evaluating the potential for',
+        'used in this table. Other co-inherited VKORC1 variants may also be important determinants of warfarin dose. 2.4 Monitoring to Achieve Optimal Anticoagulation Warfarin sodium tablets have a narrow therapeutic range (index), and their action may be affected by factors such as other drugs and dietary vitamin K. Therefore, anticoagulation must be carefully monitored during warfarin sodium tablets therapy. Determine the INR daily after the administration of the initial dose until INR results stabilize in the therapeutic range. After stabilization, maintain dosing within the therapeutic range by performing periodic INRs. The frequency of performing INR should be based on the clinical situation but generally acceptable intervals for INR determinations are 1 to 4 weeks. Perform additional INR tests when other warfarin products are interchanged with warfarin sodium tablets, as well as whenever other medications are initiated, discontinued, or taken irregularly. Heparin, a common concomitant drug, increases the INR [see Dosage and Administration ( 2.8 ) and Drug Interactions ( 7 )] . Determinations of whole blood clotting and bleeding times are not effective measures for monitoring of warfarin sodium tablets therapy. 2.5 Renal Impairment No dosage adjustment is necessary for patients with renal failure. Monitor INR more frequently in patients with',
+        '7 DRUG INTERACTIONS Concomitant use of drugs that increase bleeding risk, antibiotics, antifungals, botanical (herbal) products, and inhibitors and inducers of CYP2C9, 1A2, or 3A4. ( 7 ) Consult labeling of all concurrently used drugs for complete information about interactions with warfarin sodium or increased risks for bleeding. ( 7 ) 7.1 General Information Drugs may interact with warfarin sodium through pharmacodynamic or pharmacokinetic mechanisms. Pharmacodynamic mechanisms for drug interactions with warfarin sodium are synergism (impaired hemostasis, reduced clotting factor synthesis), competitive antagonism (vitamin K), and alteration of the physiologic control loop for vitamin K metabolism (hereditary resistance). Pharmacokinetic mechanisms for drug interactions with warfarin sodium are mainly enzyme induction, enzyme inhibition, and reduced plasma protein binding. It is important to note that some drugs may interact by more than one mechanism. More frequent INR monitoring should be performed when starting or stopping other drugs, including botanicals, or when changing dosages of other drugs, including drugs intended for short-term use (e.g., antibiotics, antifungals, corticosteroids) [ see Boxed Warning ]. Consult the labeling of all concurrently used drugs to obtain further information about interactions with warfarin sodium or adverse reactions pertaining to bleeding. 7.2 CYP450 Interactions CYP450 isozymes involved in the',
+        'of bleeding. ( 17 )',
+        'formation. Individualize the duration of therapy for each patient. In general, anticoagulant therapy should be continued until the danger of thrombosis and embolism has passed [see Dosage and Administration ( 2.2 )] . Dosing Recommendations without Consideration of Genotype If the patient’s CYP2C9 and VKORC1 genotypes are not known, the initial dose of warfarin sodium tablets is usually 2 to 5 mg once daily. Determine each patient’s dosing needs by close monitoring of the INR response and consideration of the indication being treated. Typical maintenance doses are 2 to 10 mg once daily. Dosing Recommendations with Consideration of Genotype Table 1 displays three ranges of expected maintenance warfarin sodium tablets doses observed in subgroups of patients having different combinations of CYP2C9 and VKORC1 gene variants [see Clinical Pharmacology ( 12.5 )] . If the patient’s CYP2C9 and/or VKORC1 genotype are known, consider these ranges in choosing the initial dose. Patients with CYP2C9 *1/*3, *2/*2, *2/*3, and *3/*3 may require more prolonged time (> 2 to 4 weeks) to achieve maximum INR effect for a given dosage regimen than patients without these CYP variants. Table 1: Three Ranges of Expected Maintenance Warfarin Sodium Tablets Daily Doses Based on CYP2C9 and VKORC1',
     ]
 )
 # [{'corpus_id': ..., 'score': ...}, {'corpus_id': ..., 'score': ...}, ...]
@@ -129,17 +119,16 @@ You can finetune this model on your own dataset.
 * Size: 100 training samples
 * Columns: <code>sentence_0</code>, <code>sentence_1</code>, and <code>label</code>
 * Approximate statistics based on the first 100 samples:
-  |          | sentence_0                                                                         | sentence_1                                                                          | label                                                         |
-  |:---------|:-----------------------------------------------------------------------------------|:------------------------------------------------------------------------------------|:--------------------------------------------------------------|
-  | type     | string                                                                             | string                                                                              | float                                                         |
-  | modality | text                                                                               | text                                                                                |                                                               |
-  | details  | <ul><li>min: 11 tokens</li><li>mean: 24.38 tokens</li><li>max: 50 tokens</li></ul> | <ul><li>min: 5 tokens</li><li>mean: 279.04 tokens</li><li>max: 512 tokens</li></ul> | <ul><li>min: 0.0</li><li>mean: 0.5</li><li>max: 1.0</li></ul> |
+  |         | sentence_0                                                                                       | sentence_1                                                                                         | label                                                         |
+  |:--------|:-------------------------------------------------------------------------------------------------|:---------------------------------------------------------------------------------------------------|:--------------------------------------------------------------|
+  | type    | string                                                                                           | string                                                                                             | float                                                         |
+  | details | <ul><li>min: 49 characters</li><li>mean: 102.22 characters</li><li>max: 204 characters</li></ul> | <ul><li>min: 15 characters</li><li>mean: 1182.08 characters</li><li>max: 1945 characters</li></ul> | <ul><li>min: 0.0</li><li>mean: 0.5</li><li>max: 1.0</li></ul> |
 * Samples:
-  | sentence_0                                                                                                                                                                                                                | sentence_1                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | label            |
-  |:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-----------------|
-  | <code>What specific congenital malformations result from first-trimester warfarin exposure according to well-controlled studies?</code>                                                                                   | <code>8 USE IN SPECIFIC POPULATIONS Pregnant women with mechanical heart valves: Warfarin sodium may cause fetal harm; however, the benefits may outweigh the risks. ( 8.1 ) Lactation: Monitor breastfeeding infants for bruising or bleeding. ( 8.2 ) Renal Impairment: Instruct patients with renal impairment to frequently monitor their INR. ( 8.6 ) 8.1 Pregnancy Risk Summary Warfarin sodium is contraindicated in women who are pregnant except in pregnant women with mechanical heart valves, who are at high risk of thromboembolism, and for whom the benefits of warfarin sodium may outweigh the risks [see Warnings and Precautions ( 5.7 )] . Warfarin sodium can cause fetal harm. Exposure to warfarin during the first trimester of pregnancy caused a pattern of congenital malformations in about 5% of exposed offspring. Because these data were not collected in adequate and well-controlled studies, this incidence of major birth defects is not an adequate basis for comparison to the estimated incidences in ...</code> | <code>0.0</code> |
-  | <code>What are the indications for Warfarin sodium tablets including prophylaxis and treatment of venous thrombosis, pulmonary embolism, atrial fibrillation complications, and post-myocardial infarction events?</code> | <code>1 INDICATIONS AND USAGE Warfarin sodium tablets are indicated for: Prophylaxis and treatment of venous thrombosis and its extension, pulmonary embolism (PE). Prophylaxis and treatment of thromboembolic complications associated with atrial fibrillation (AF) and/or cardiac valve replacement. Reduction in the risk of death, recurrent myocardial infarction (MI), and thromboembolic events such as stroke or systemic embolization after myocardial infarction. Limitations of Use Warfarin sodium tablets have no direct effect on an established thrombus, nor does it reverse ischemic tissue damage. Once a thrombus has occurred, however, the goals of anticoagulant treatment are to prevent further extension of the formed clot and to prevent secondary thromboembolic complications that may result in serious and possibly fatal sequelae. Warfarin sodium tablets are a vitamin K antagonist indicated for: Prophylaxis and treatment of venous thrombosis and its extension, pulmonary embolism ( 1 ) Prophylaxis ...</code> | <code>1.0</code> |
-  | <code>What target INR range is recommended for warfarin therapy in patients with a bileaflet mechanical valve in the aortic position who are in sinus rhythm without left atrial enlargement?</code>                      | <code>and prosthetic heart valves, long-term anticoagulation with warfarin is recommended; the target INR may be increased and aspirin added depending on valve type and position, and on patient factors. Mechanical and Bioprosthetic Heart Valves For patients with a bileaflet mechanical valve or a Medtronic Hall (Minneapolis, MN) tilting disk valve in the aortic position who are in sinus rhythm and without left atrial enlargement, therapy with warfarin to a target INR of 2.5 (range, 2 to 3) is recommended. For patients with tilting disk valves and bileaflet mechanical valves in the mitral position, therapy with warfarin to a target INR of 3 (range, 2.5 to 3.5) is recommended. For patients with caged ball or caged disk valves, therapy with warfarin to a target INR of 3 (range, 2.5 to 3.5) is recommended. For patients with a bioprosthetic valve in the mitral position, therapy with warfarin to a target INR of 2.5 (range, 2 to 3) for the first 3 months after valve insertion is recommended. If addi...</code> | <code>1.0</code> |
+  | sentence_0                                                                                              | sentence_1                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | label            |
+  |:--------------------------------------------------------------------------------------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-----------------|
+  | <code>What specific changes in INR occur when patients take warfarin together with rifampin?</code>     | <code>telithromycin, tipranavir, voriconazole, zileuton armodafinil, amprenavir, aprepitant, bosentan, carbamazepine, efavirenz, etravirine, modafinil, nafcillin, phenytoin, pioglitazone, prednisone, rifampin, rufinamide 7.3 Drugs that Increase Bleeding Risk Examples of drugs known to increase the risk of bleeding are presented in Table 3 . Because bleeding risk is increased when these drugs are used concomitantly with warfarin, closely monitor patients receiving any such drug with warfarin. Table 3: Drugs that Can Increase the Risk of Bleeding Drug Class Specific Drugs Anticoagulants argatroban, dabigatran, bivalirudin, desirudin, heparin, lepirudin Antiplatelet Agents aspirin, cilostazol, clopidogrel, dipyridamole, prasugrel, ticlopidine Non-steroidal Anti-Inflammatory Agents celecoxib, diclofenac, diflunisal, fenoprofen, ibuprofen, indomethacin, ketoprofen, ketorolac, mefenamic acid, naproxen, oxaprozin, piroxicam, sulindac Serotonin Reuptake Inhibitors citalopram, desvenlafaxine, duloxet...</code> | <code>0.0</code> |
+  | <code>What specific numerical values define the therapeutic INR range for warfarin therapy?</code>      | <code>used in this table. Other co-inherited VKORC1 variants may also be important determinants of warfarin dose. 2.4 Monitoring to Achieve Optimal Anticoagulation Warfarin sodium tablets have a narrow therapeutic range (index), and their action may be affected by factors such as other drugs and dietary vitamin K. Therefore, anticoagulation must be carefully monitored during warfarin sodium tablets therapy. Determine the INR daily after the administration of the initial dose until INR results stabilize in the therapeutic range. After stabilization, maintain dosing within the therapeutic range by performing periodic INRs. The frequency of performing INR should be based on the clinical situation but generally acceptable intervals for INR determinations are 1 to 4 weeks. Perform additional INR tests when other warfarin products are interchanged with warfarin sodium tablets, as well as whenever other medications are initiated, discontinued, or taken irregularly. Heparin, a common concomitant dru...</code> | <code>0.0</code> |
+  | <code>Which specific antibiotics inhibit CYP3A4 and increase bleeding risk with warfarin sodium?</code> | <code>7 DRUG INTERACTIONS Concomitant use of drugs that increase bleeding risk, antibiotics, antifungals, botanical (herbal) products, and inhibitors and inducers of CYP2C9, 1A2, or 3A4. ( 7 ) Consult labeling of all concurrently used drugs for complete information about interactions with warfarin sodium or increased risks for bleeding. ( 7 ) 7.1 General Information Drugs may interact with warfarin sodium through pharmacodynamic or pharmacokinetic mechanisms. Pharmacodynamic mechanisms for drug interactions with warfarin sodium are synergism (impaired hemostasis, reduced clotting factor synthesis), competitive antagonism (vitamin K), and alteration of the physiologic control loop for vitamin K metabolism (hereditary resistance). Pharmacokinetic mechanisms for drug interactions with warfarin sodium are mainly enzyme induction, enzyme inhibition, and reduced plasma protein binding. It is important to note that some drugs may interact by more than one mechanism. More frequent INR monitoring sho...</code> | <code>0.0</code> |
 * Loss: [<code>BinaryCrossEntropyLoss</code>](https://sbert.net/docs/package_reference/cross_encoder/losses.html#binarycrossentropyloss) with these parameters:
   ```json
   {
@@ -152,106 +141,125 @@ You can finetune this model on your own dataset.
 #### Non-Default Hyperparameters
 
 - `per_device_train_batch_size`: 16
-- `fp16`: True
 - `per_device_eval_batch_size`: 16
 
 #### All Hyperparameters
 <details><summary>Click to expand</summary>
 
+- `overwrite_output_dir`: False
+- `do_predict`: False
+- `eval_strategy`: no
+- `prediction_loss_only`: True
 - `per_device_train_batch_size`: 16
-- `num_train_epochs`: 3
-- `max_steps`: -1
+- `per_device_eval_batch_size`: 16
+- `per_gpu_train_batch_size`: None
+- `per_gpu_eval_batch_size`: None
+- `gradient_accumulation_steps`: 1
+- `eval_accumulation_steps`: None
+- `torch_empty_cache_steps`: None
 - `learning_rate`: 5e-05
-- `lr_scheduler_type`: linear
-- `lr_scheduler_kwargs`: None
-- `warmup_steps`: 0
-- `optim`: adamw_torch_fused
-- `optim_args`: None
 - `weight_decay`: 0.0
 - `adam_beta1`: 0.9
 - `adam_beta2`: 0.999
 - `adam_epsilon`: 1e-08
-- `optim_target_modules`: None
-- `gradient_accumulation_steps`: 1
-- `average_tokens_across_devices`: True
 - `max_grad_norm`: 1
-- `label_smoothing_factor`: 0.0
+- `num_train_epochs`: 3
+- `max_steps`: -1
+- `lr_scheduler_type`: linear
+- `lr_scheduler_kwargs`: None
+- `warmup_ratio`: 0.0
+- `warmup_steps`: 0
+- `log_level`: passive
+- `log_level_replica`: warning
+- `log_on_each_node`: True
+- `logging_nan_inf_filter`: True
+- `save_safetensors`: True
+- `save_on_each_node`: False
+- `save_only_model`: False
+- `restore_callback_states_from_checkpoint`: False
+- `no_cuda`: False
+- `use_cpu`: False
+- `use_mps_device`: False
+- `seed`: 42
+- `data_seed`: None
+- `jit_mode_eval`: False
 - `bf16`: False
-- `fp16`: True
+- `fp16`: False
+- `fp16_opt_level`: O1
+- `half_precision_backend`: auto
 - `bf16_full_eval`: False
 - `fp16_full_eval`: False
 - `tf32`: None
-- `gradient_checkpointing`: False
-- `gradient_checkpointing_kwargs`: None
-- `torch_compile`: False
-- `torch_compile_backend`: None
-- `torch_compile_mode`: None
-- `use_liger_kernel`: False
-- `liger_kernel_config`: None
-- `use_cache`: False
-- `neftune_noise_alpha`: None
-- `torch_empty_cache_steps`: None
-- `auto_find_batch_size`: False
-- `log_on_each_node`: True
-- `logging_nan_inf_filter`: True
-- `include_num_input_tokens_seen`: no
-- `log_level`: passive
-- `log_level_replica`: warning
-- `disable_tqdm`: False
-- `project`: huggingface
-- `trackio_space_id`: None
-- `trackio_bucket_id`: None
-- `trackio_static_space_id`: None
-- `per_device_eval_batch_size`: 16
-- `prediction_loss_only`: True
-- `eval_on_start`: False
-- `eval_do_concat_batches`: True
-- `eval_use_gather_object`: False
-- `eval_accumulation_steps`: None
-- `include_for_metrics`: []
-- `batch_eval_metrics`: False
-- `save_only_model`: False
-- `save_on_each_node`: False
-- `enable_jit_checkpoint`: False
-- `push_to_hub`: False
-- `hub_private_repo`: None
-- `hub_model_id`: None
-- `hub_strategy`: every_save
-- `hub_always_push`: False
-- `hub_revision`: None
-- `load_best_model_at_end`: False
-- `ignore_data_skip`: False
-- `restore_callback_states_from_checkpoint`: False
-- `full_determinism`: False
-- `seed`: 42
-- `data_seed`: None
-- `use_cpu`: False
-- `accelerator_config`: {'split_batches': False, 'dispatch_batches': None, 'even_batches': True, 'use_seedable_sampler': True, 'non_blocking': False, 'gradient_accumulation_kwargs': None}
-- `parallelism_config`: None
+- `local_rank`: 0
+- `ddp_backend`: None
+- `tpu_num_cores`: None
+- `tpu_metrics_debug`: False
+- `debug`: []
 - `dataloader_drop_last`: False
 - `dataloader_num_workers`: 0
-- `dataloader_pin_memory`: True
-- `dataloader_persistent_workers`: False
 - `dataloader_prefetch_factor`: None
+- `past_index`: -1
+- `disable_tqdm`: False
 - `remove_unused_columns`: True
 - `label_names`: None
-- `train_sampling_strategy`: random
+- `load_best_model_at_end`: False
+- `ignore_data_skip`: False
+- `fsdp`: []
+- `fsdp_min_num_params`: 0
+- `fsdp_config`: {'min_num_params': 0, 'xla': False, 'xla_fsdp_v2': False, 'xla_fsdp_grad_ckpt': False}
+- `fsdp_transformer_layer_cls_to_wrap`: None
+- `accelerator_config`: {'split_batches': False, 'dispatch_batches': None, 'even_batches': True, 'use_seedable_sampler': True, 'non_blocking': False, 'gradient_accumulation_kwargs': None}
+- `parallelism_config`: None
+- `deepspeed`: None
+- `label_smoothing_factor`: 0.0
+- `optim`: adamw_torch_fused
+- `optim_args`: None
+- `adafactor`: False
+- `group_by_length`: False
 - `length_column_name`: length
+- `project`: huggingface
+- `trackio_space_id`: trackio
 - `ddp_find_unused_parameters`: None
 - `ddp_bucket_cap_mb`: None
 - `ddp_broadcast_buffers`: False
-- `ddp_static_graph`: None
-- `ddp_backend`: None
-- `ddp_timeout`: 1800
-- `fsdp`: []
-- `fsdp_config`: {'min_num_params': 0, 'xla': False, 'xla_fsdp_v2': False, 'xla_fsdp_grad_ckpt': False}
-- `deepspeed`: None
-- `debug`: []
+- `dataloader_pin_memory`: True
+- `dataloader_persistent_workers`: False
 - `skip_memory_metrics`: True
-- `do_predict`: False
+- `use_legacy_prediction_loop`: False
+- `push_to_hub`: False
 - `resume_from_checkpoint`: None
-- `warmup_ratio`: None
-- `local_rank`: -1
+- `hub_model_id`: None
+- `hub_strategy`: every_save
+- `hub_private_repo`: None
+- `hub_always_push`: False
+- `hub_revision`: None
+- `gradient_checkpointing`: False
+- `gradient_checkpointing_kwargs`: None
+- `include_inputs_for_metrics`: False
+- `include_for_metrics`: []
+- `eval_do_concat_batches`: True
+- `fp16_backend`: auto
+- `push_to_hub_model_id`: None
+- `push_to_hub_organization`: None
+- `mp_parameters`: 
+- `auto_find_batch_size`: False
+- `full_determinism`: False
+- `torchdynamo`: None
+- `ray_scope`: last
+- `ddp_timeout`: 1800
+- `torch_compile`: False
+- `torch_compile_backend`: None
+- `torch_compile_mode`: None
+- `include_tokens_per_second`: False
+- `include_num_input_tokens_seen`: no
+- `neftune_noise_alpha`: None
+- `optim_target_modules`: None
+- `batch_eval_metrics`: False
+- `eval_on_start`: False
+- `use_liger_kernel`: False
+- `liger_kernel_config`: None
+- `eval_use_gather_object`: False
+- `average_tokens_across_devices`: True
 - `prompts`: None
 - `batch_sampler`: batch_sampler
 - `multi_dataset_batch_sampler`: proportional
@@ -260,23 +268,14 @@ You can finetune this model on your own dataset.
 
 </details>
 
-### Training Time
-- **Training**: 1.4 minutes
-
 ### Framework Versions
-- Python: 3.11.15
-- Sentence Transformers: 5.5.0
-- Transformers: 5.8.1
-- PyTorch: 2.12.0
-- Accelerate: 1.13.0
-- Datasets: 4.8.5
+- Python: 3.9.6
+- Sentence Transformers: 5.1.2
+- Transformers: 4.57.6
+- PyTorch: 2.8.0
+- Accelerate: 1.10.1
+- Datasets: 4.5.0
 - Tokenizers: 0.22.2
-
-## Additional Resources
-
-- [Training and Finetuning Reranker Models with Sentence Transformers](https://huggingface.co/blog/train-reranker): the end-to-end guide for training or finetuning Cross Encoder (reranker) models.
-- [Multimodal Embedding & Reranker Models with Sentence Transformers](https://huggingface.co/blog/multimodal-sentence-transformers): use text, image, audio, and video reranker models through the same API.
-- [Training and Finetuning Multimodal Embedding & Reranker Models with Sentence Transformers](https://huggingface.co/blog/train-multimodal-sentence-transformers): training multimodal Cross Encoders.
 
 ## Citation
 
