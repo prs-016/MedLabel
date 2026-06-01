@@ -342,210 +342,502 @@ def answer_question(question: str, scanned_drug: str) -> dict:
     return {"kind": kind, "summary": summary, "results": results}
 
 
-st.set_page_config(page_title="MedLabel", layout="wide")
+# ─────────────────────────────────────────────────────────────────────────────
+# Page config
+# ─────────────────────────────────────────────────────────────────────────────
+st.set_page_config(
+    page_title="MedLabel",
+    page_icon="💊",
+    layout="wide",
+    initial_sidebar_state="collapsed",
+)
 
-st.title("MedLabel: Intelligent Medicine Scanner")
-st.markdown("*AI can make mistakes. Always verify with the physical label or your pharmacist.*")
+# ─────────────────────────────────────────────────────────────────────────────
+# Design-system CSS (matches Figma: Inter font, teal #17B8A6, dark #0D2737)
+# ─────────────────────────────────────────────────────────────────────────────
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-with st.sidebar:
-    st.header("Settings")
-    xai_status    = "Set" if os.getenv("XAI_API_KEY") else "Missing"
+*, *::before, *::after { box-sizing: border-box; }
+
+body, .stApp, .main, [data-testid="stAppViewContainer"] {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    background: #F5F9FA !important;
+}
+
+/* ── Hide Streamlit chrome ── */
+#MainMenu, header[data-testid="stHeader"], footer,
+.stDeployButton, [data-testid="collapsedControl"],
+section[data-testid="stSidebar"] { display: none !important; }
+
+.block-container,
+[data-testid="stMainBlockContainer"] {
+    padding: 0 !important;
+    max-width: 100% !important;
+}
+
+/* ── Navbar ── */
+.ml-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 80px; height: 72px;
+    background: #ffffff; border-bottom: 1px solid #E5EDF0;
+    position: sticky; top: 0; z-index: 1000;
+}
+.ml-logo {
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 700; font-size: 17px; color: #0D2737;
+    text-decoration: none;
+}
+.ml-logo-icon {
+    width: 32px; height: 32px; background: #17B8A6;
+    border-radius: 8px; flex-shrink: 0;
+}
+.ml-nav-links { display: flex; align-items: center; gap: 28px; }
+.ml-nav-links a {
+    color: #374151; text-decoration: none;
+    font-size: 15px; font-weight: 500; transition: color .15s;
+}
+.ml-nav-links a:hover { color: #17B8A6; }
+
+/* ── Shared buttons ── */
+.ml-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 10px; font-weight: 600; font-size: 15px;
+    cursor: pointer; text-decoration: none !important;
+    transition: all .15s; border: none; padding: 11px 24px;
+    font-family: 'Inter', sans-serif;
+}
+.ml-btn-primary { background: #17B8A6 !important; color: #ffffff !important; }
+.ml-btn-primary:hover { background: #0FA898 !important; color: #ffffff !important; }
+.ml-btn-outline {
+    background: transparent !important; color: #0D2737 !important;
+    border: 2px solid #0D2737 !important;
+}
+.ml-btn-outline:hover { background: #0D2737 !important; color: #ffffff !important; }
+.ml-btn-sm { padding: 8px 18px !important; font-size: 14px !important; }
+
+/* ── Hero ── */
+.ml-hero {
+    text-align: center; padding: 90px 20px 110px;
+    background: #F5F9FA;
+}
+.ml-badge {
+    display: inline-flex; align-items: center; gap: 7px;
+    color: #17B8A6; font-size: 13px; font-weight: 600;
+    letter-spacing: .3px; margin-bottom: 28px;
+}
+.ml-badge-dot {
+    width: 8px; height: 8px; background: #17B8A6;
+    border-radius: 50%; display: inline-block;
+}
+.ml-hero h1 {
+    font-size: clamp(36px, 5vw, 60px); font-weight: 800; color: #0D2737;
+    line-height: 1.08; max-width: 860px; margin: 0 auto 22px;
+    letter-spacing: -.5px;
+}
+.ml-hero-sub {
+    font-size: 18px; color: #6B7C8D; max-width: 520px;
+    margin: 0 auto 44px; line-height: 1.65;
+}
+.ml-hero-btns {
+    display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;
+}
+
+/* ── Features ── */
+.ml-features { padding: 88px 80px; background: #F5F9FA; }
+.ml-features-title {
+    text-align: center; font-size: clamp(26px, 3vw, 38px);
+    font-weight: 800; color: #0D2737; margin-bottom: 52px;
+    letter-spacing: -.3px;
+}
+.ml-cards {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 24px; max-width: 1100px; margin: 0 auto;
+}
+@media (max-width: 900px) { .ml-cards { grid-template-columns: 1fr; } }
+.ml-card {
+    background: #ffffff; border-radius: 18px;
+    padding: 32px 28px; border: 1px solid #E5EDF0;
+    transition: box-shadow .2s;
+}
+.ml-card:hover { box-shadow: 0 4px 24px rgba(23,184,166,.12); }
+.ml-card-icon {
+    width: 52px; height: 52px; background: #E8F8F6;
+    border-radius: 14px; margin-bottom: 22px;
+}
+.ml-card h3 {
+    font-size: 18px; font-weight: 700; color: #0D2737; margin-bottom: 10px;
+}
+.ml-card p { font-size: 14px; color: #6B7C8D; line-height: 1.65; }
+
+/* ── Footer ── */
+.ml-footer {
+    background: #E8F4F2; padding: 36px 80px;
+    text-align: center; color: #6B7C8D;
+    font-size: 14px; border-top: 1px solid #C8E8E2;
+}
+
+/* ── Scanner page ── */
+.ml-scanner { max-width: 1280px; margin: 0 auto; padding: 36px 48px; }
+.ml-scanner-header { margin-bottom: 32px; }
+.ml-scanner-title {
+    font-size: 26px; font-weight: 800; color: #0D2737; margin-bottom: 6px;
+}
+.ml-scanner-desc { font-size: 15px; color: #6B7C8D; }
+.ml-label {
+    font-size: 11px; font-weight: 700; color: #6B7C8D;
+    letter-spacing: .8px; text-transform: uppercase; margin-bottom: 8px;
+}
+
+/* ── Streamlit widget overrides ── */
+.stButton > button {
+    background: #17B8A6 !important; color: #ffffff !important;
+    border: none !important; border-radius: 10px !important;
+    font-family: 'Inter', sans-serif !important; font-weight: 600 !important;
+    font-size: 15px !important; transition: background .15s !important;
+}
+.stButton > button:hover { background: #0FA898 !important; }
+.stButton > button[kind="secondary"] {
+    background: transparent !important; color: #0D2737 !important;
+    border: 2px solid #E5EDF0 !important;
+}
+.stButton > button[kind="secondary"]:hover {
+    border-color: #17B8A6 !important; color: #17B8A6 !important;
+    background: transparent !important;
+}
+div[data-testid="stBackButton"] button,
+.back-btn button {
+    background: transparent !important; color: #17B8A6 !important;
+    border: none !important; font-size: 14px !important;
+    font-weight: 500 !important; padding: 0 !important;
+    box-shadow: none !important;
+}
+
+[data-testid="stFileUploaderDropzone"] {
+    border: 2px dashed #17B8A6 !important;
+    border-radius: 14px !important; background: #F0FBF9 !important;
+}
+
+.stTabs [data-baseweb="tab-list"] {
+    gap: 0; background: transparent;
+    border-bottom: 2px solid #E5EDF0;
+}
+.stTabs [data-baseweb="tab"] {
+    font-family: 'Inter', sans-serif !important;
+    font-weight: 600 !important; color: #6B7C8D !important;
+    background: transparent; border: none; padding: 10px 20px;
+}
+.stTabs [aria-selected="true"] {
+    color: #17B8A6 !important;
+    border-bottom: 2px solid #17B8A6 !important;
+}
+
+[data-testid="stMetric"] {
+    background: #ffffff; border-radius: 12px;
+    padding: 16px 20px; border: 1px solid #E5EDF0;
+}
+
+.stTextArea textarea,
+[data-testid="stChatInput"] textarea {
+    border-radius: 12px !important; border-color: #E5EDF0 !important;
+    font-family: 'Inter', sans-serif !important;
+}
+
+.stRadio label, .stRadio p {
+    font-family: 'Inter', sans-serif !important; color: #374151 !important;
+}
+
+div[data-baseweb="radio"] > label > div:first-child > div {
+    border-color: #17B8A6 !important;
+}
+
+.stAlert, .stSuccess, .stInfo, .stWarning, .stError {
+    border-radius: 12px !important;
+    font-family: 'Inter', sans-serif !important;
+}
+
+.stSpinner p { font-family: 'Inter', sans-serif !important; color: #6B7C8D !important; }
+
+.stExpander { border: 1px solid #E5EDF0 !important; border-radius: 12px !important; }
+</style>
+""", unsafe_allow_html=True)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Navigation state  (HTML buttons set ?scan=true; back button uses session_state)
+# ─────────────────────────────────────────────────────────────────────────────
+if st.query_params.get("scan") == "true":
+    st.session_state["show_scanner"] = True
+    st.query_params.clear()
+    st.rerun()
+
+_show_scanner = st.session_state.get("show_scanner", False)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LANDING PAGE
+# ─────────────────────────────────────────────────────────────────────────────
+if not _show_scanner:
+    st.markdown("""
+<nav class="ml-nav">
+  <a class="ml-logo" href="#">
+    <div class="ml-logo-icon"></div>
+    MedLabel
+  </a>
+  <div class="ml-nav-links">
+    <a href="#how-it-works">How it works</a>
+    <a href="#features">Features</a>
+    <a href="#safety">Safety</a>
+    <a href="#">Docs</a>
+    <a href="#"
+       onclick="window.location.search='?scan=true';return false;"
+       class="ml-btn ml-btn-primary ml-btn-sm">Scan a label</a>
+  </div>
+</nav>
+
+<section class="ml-hero" id="how-it-works">
+  <div class="ml-badge">
+    <span class="ml-badge-dot"></span>Safe
+  </div>
+  <h1>Understand any medicine label in seconds</h1>
+  <p class="ml-hero-sub">
+    Point your phone at any pill bottle, box, or blister pack. MedLabel reads it,
+    explains it in plain English, and answers your questions — grounded in official FDA data.
+  </p>
+  <div class="ml-hero-btns">
+    <a href="#"
+       onclick="window.location.search='?scan=true';return false;"
+       class="ml-btn ml-btn-primary">Scan a label</a>
+    <a href="#features" class="ml-btn ml-btn-outline">See how it works</a>
+  </div>
+</section>
+
+<section class="ml-features" id="features">
+  <div class="ml-features-title">Built for trust and clarity</div>
+  <div class="ml-cards">
+    <div class="ml-card">
+      <div class="ml-card-icon"></div>
+      <h3>Smart scanning</h3>
+      <p>YOLO routes each photo to the right reader — OCR for flat labels, Vision AI for curved bottles.</p>
+    </div>
+    <div class="ml-card">
+      <div class="ml-card-icon"></div>
+      <h3>Plain-English answers</h3>
+      <p>Medical jargon simplified to a 5th-grade reading level, every time.</p>
+    </div>
+    <div class="ml-card">
+      <div class="ml-card-icon"></div>
+      <h3>Grounded in FDA data</h3>
+      <p>Every answer is cited from official FDA drug labels — never hallucinated.</p>
+    </div>
+  </div>
+</section>
+
+<footer class="ml-footer" id="safety">
+  <p>© 2026 MedLabel &nbsp;·&nbsp; An informational tool, not a substitute for professional medical advice.</p>
+</footer>
+""", unsafe_allow_html=True)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SCANNER
+# ─────────────────────────────────────────────────────────────────────────────
+else:
     gemini_status = "Set" if os.getenv("GEMINI_API_KEY") else "Missing"
-    st.write(f"xAI API Key: **{xai_status}**")
-    st.write(f"Gemini API Key: **{gemini_status}**")
-    if xai_status == "Missing":
-        st.caption("Add `XAI_API_KEY=...` to your `.env` file for OCR and chat answers.")
-    try:
-        from knowledge.chroma_config import get_chroma_db_path, get_collection_name
-        _db_path = get_chroma_db_path()
-        if os.path.isdir(_db_path) and any(os.scandir(_db_path)):
-            @st.cache_resource(show_spinner=False)
-            def _load_embedder():
-                from knowledge.embedder import DrugEmbedder
-                return DrugEmbedder()
-            _n = _load_embedder().collection.count()
-            st.caption(f"Label DB: `{get_collection_name()}` — **{_n}** chunks")
-        else:
-            st.caption("Label DB: not available in this deployment")
-    except Exception:
-        st.caption("Label DB: run ingest to populate medlabel_db")
-    st.divider()
-    packaging_type = st.radio(
-        "Label type",
-        options=["cylindrical", "flat", "auto"],
-        format_func=lambda x: {
-            "cylindrical": "Bottle / curved label (xAI Vision)",
-            "flat":        "Flat label (PaddleOCR)",
-            "auto":        "Auto-detect (YOLO)",
-        }[x],
-        index=0,
-        help="Use Bottle for curved medicine bottles like Advil. "
-             "Use Flat for boxes, blister packs, or tube labels. "
-             "Auto uses YOLO to classify (requires trained model).",
-    )
 
-col1, col2 = st.columns([1, 1])
+    st.markdown("""
+<nav class="ml-nav">
+  <a class="ml-logo" href="#">
+    <div class="ml-logo-icon"></div>
+    MedLabel
+  </a>
+  <div class="ml-nav-links">
+    <span style="font-size:13px;color:#6B7C8D;font-family:Inter,sans-serif;">
+      AI can make mistakes — always verify with your pharmacist.
+    </span>
+  </div>
+</nav>
+""", unsafe_allow_html=True)
 
-with col1:
-    st.header("Scan Medicine")
-    uploaded_file = st.file_uploader(
-        "Upload a photo of your medicine label",
-        type=["jpg", "jpeg", "png", "webp", "heic", "heif"],
-    )
+    st.markdown('<div class="ml-scanner">', unsafe_allow_html=True)
 
-    if uploaded_file:
-        img = PIL.Image.open(uploaded_file)
-        st.image(img, caption="Uploaded Image", use_container_width=True)
+    # Back button + page title
+    _bc, _tc = st.columns([1, 7])
+    with _bc:
+        st.markdown('<div class="back-btn">', unsafe_allow_html=True)
+        if st.button("← Home", key="back_home"):
+            st.session_state["show_scanner"] = False
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
 
-        if st.button("Analyze Label"):
-            suffix = Path(uploaded_file.name).suffix or ".png"
-            tmp_path = None
-            try:
-                with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-                    tmp.write(uploaded_file.getvalue())
-                    tmp_path = tmp.name
+    st.markdown("""
+<div class="ml-scanner-header">
+  <div class="ml-scanner-title">Scan your medicine label</div>
+  <div class="ml-scanner-desc">Upload a photo — MedLabel reads it, simplifies it, and answers your questions.</div>
+</div>
+""", unsafe_allow_html=True)
 
-                # ── Routing ───────────────────────────────────────────────────
-                if packaging_type == "auto":
-                    with st.spinner("Detecting packaging type with YOLO…"):
-                        from vision.detector import YOLORouter
-                        router   = YOLORouter()
-                        pkg, _bbox, _conf = router.detect_geometry(tmp_path)
-                        note = "" if router._trained else " *(fallback — model not trained yet)*"
-                        st.info(f"YOLO detected: **{'Flat' if pkg == 'flat' else 'Cylindrical'}**{note}")
-                else:
-                    pkg = packaging_type
+    col1, col2 = st.columns([1, 1], gap="large")
 
-                path_label = (
-                    "xAI Vision on bottle label..."
-                    if pkg == "cylindrical"
-                    else "PaddleOCR on flat label..."
-                )
-                with st.spinner(path_label):
-                    from vision.ocr import run_ocr
-                    result = run_ocr(tmp_path, packaging_type=pkg)
+    with col1:
+        st.markdown('<div class="ml-label">Label type</div>', unsafe_allow_html=True)
+        packaging_type = st.radio(
+            "Label type",
+            options=["cylindrical", "flat", "auto"],
+            format_func=lambda x: {
+                "cylindrical": "🫙  Bottle / curved label  (xAI Vision)",
+                "flat":        "📦  Flat label  (PaddleOCR)",
+                "auto":        "🤖  Auto-detect  (YOLO)",
+            }[x],
+            index=0,
+            label_visibility="collapsed",
+        )
 
-                if "reupload_required" in result.hallucination_flags:
-                    conf_pct = int(result.confidence * 100)
-                    st.warning(
-                        f"Image quality too low to read the label reliably "
-                        f"(confidence: {conf_pct}%, threshold: 75%). "
-                        "Please retake the photo with better lighting and a "
-                        "flat, unobstructed view of the label, then re-upload."
+        st.markdown('<div class="ml-label" style="margin-top:24px;">Upload label photo</div>',
+                    unsafe_allow_html=True)
+        uploaded_file = st.file_uploader(
+            "Upload label photo",
+            type=["jpg", "jpeg", "png", "webp", "heic", "heif"],
+            label_visibility="collapsed",
+        )
+
+        if uploaded_file:
+            img = PIL.Image.open(uploaded_file)
+            st.image(img, caption="Uploaded image", use_container_width=True)
+
+            if st.button("Analyze Label", type="primary", use_container_width=True):
+                suffix = Path(uploaded_file.name).suffix or ".png"
+                tmp_path = None
+                try:
+                    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+                        tmp.write(uploaded_file.getvalue())
+                        tmp_path = tmp.name
+
+                    if packaging_type == "auto":
+                        with st.spinner("Detecting packaging type with YOLO…"):
+                            from vision.detector import YOLORouter
+                            router = YOLORouter()
+                            pkg, _bbox, _conf = router.detect_geometry(tmp_path)
+                            note = "" if router._trained else " *(fallback — model not trained)*"
+                            st.info(f"YOLO detected: **{'Flat' if pkg == 'flat' else 'Cylindrical'}**{note}")
+                    else:
+                        pkg = packaging_type
+
+                    path_label = (
+                        "Reading bottle label with xAI Vision…"
+                        if pkg == "cylindrical"
+                        else "Reading flat label with PaddleOCR…"
                     )
-                else:
-                    st.session_state["ocr_result"]         = result
-                    st.session_state["simplified_summary"] = None
-                    st.session_state["chat_history"]       = []
-                    st.success(
-                        f"Analysis complete (confidence: {int(result.confidence * 100)}%)"
-                    )
+                    with st.spinner(path_label):
+                        from vision.ocr import run_ocr
+                        result = run_ocr(tmp_path, packaging_type=pkg)
 
-            except ImportError as exc:
-                st.error(
-                    f"PaddleOCR is not installed: {exc}\n\n"
-                    "Run: `pip install paddleocr` and "
-                    "`pip install -r requirements-paddle.txt`"
-                )
-            except Exception as exc:
-                st.error(f"OCR failed: {exc}")
-            finally:
-                if tmp_path:
-                    try:
-                        os.unlink(tmp_path)
-                    except OSError:
-                        pass
+                    if "reupload_required" in result.hallucination_flags:
+                        conf_pct = int(result.confidence * 100)
+                        st.warning(
+                            f"Image quality too low (confidence: {conf_pct}%, threshold: 75%). "
+                            "Please retake the photo with better lighting and try again."
+                        )
+                    else:
+                        st.session_state["ocr_result"]         = result
+                        st.session_state["simplified_summary"] = None
+                        st.session_state["chat_history"]       = []
+                        st.success(f"Done — confidence: {int(result.confidence * 100)}%")
 
-with col2:
-    tab1, tab2, tab3 = st.tabs(["Extracted Info", "Simplified Info", "Chatbot"])
+                except ImportError as exc:
+                    st.error(f"PaddleOCR is not installed: {exc}")
+                except Exception as exc:
+                    st.error(f"OCR failed: {exc}")
+                finally:
+                    if tmp_path:
+                        try:
+                            os.unlink(tmp_path)
+                        except OSError:
+                            pass
 
-    with tab1:
-        st.subheader("Structured Label Data")
-        result = st.session_state.get("ocr_result")
-        if result:
-            st.metric("Drug Name", result.drug_name or "—")
-            st.metric("Dosage", result.dosage or "—")
-            st.divider()
-            st.caption("All text detected on label:")
-            st.text_area("Raw label text", result.raw_text, height=300, disabled=True)
-            st.caption(f"Path used: {result.path_used} | Confidence: {result.confidence:.2%}")
-        else:
-            st.info("Upload and analyze a label to see results here.")
+    with col2:
+        tab1, tab2, tab3 = st.tabs(["Extracted Info", "Simplified Info", "Chatbot"])
 
-    with tab2:
-        st.subheader("Plain English Summary")
-        result = st.session_state.get("ocr_result")
-        if result:
-            cached = st.session_state.get("simplified_summary")
-            if cached:
-                st.markdown(cached)
-                if st.button("Regenerate Summary"):
-                    st.session_state["simplified_summary"] = None
-                    st.rerun()
+        with tab1:
+            result = st.session_state.get("ocr_result")
+            if result:
+                c1, c2 = st.columns(2)
+                c1.metric("Drug Name", result.drug_name or "—")
+                c2.metric("Dosage", result.dosage or "—")
+                st.divider()
+                st.caption("All text detected on label:")
+                st.text_area("Raw label text", result.raw_text, height=280, disabled=True)
+                st.caption(f"Path: {result.path_used}  ·  Confidence: {result.confidence:.0%}")
             else:
-                if gemini_status == "Missing":
-                    st.warning(
-                        "Gemini API key not set. "
-                        "Add `GEMINI_API_KEY=your_key` to your .env file."
-                    )
+                st.info("Upload and analyze a label to see results here.")
+
+        with tab2:
+            result = st.session_state.get("ocr_result")
+            if result:
+                cached = st.session_state.get("simplified_summary")
+                if cached:
+                    st.markdown(cached)
+                    if st.button("Regenerate Summary", key="regen"):
+                        st.session_state["simplified_summary"] = None
+                        st.rerun()
                 else:
-                    if st.button("Generate Plain-English Summary", type="primary"):
-                        with st.spinner("Asking Gemini to simplify the label…"):
-                            from agent.simplifier import simplify_label
-                            summary = simplify_label(result)
-                            st.session_state["simplified_summary"] = summary
-                        st.markdown(summary)
-        else:
-            st.info("Analyze a label to see a plain-English summary.")
+                    if gemini_status == "Missing":
+                        st.warning("Gemini API key not set — add GEMINI_API_KEY to secrets.")
+                    else:
+                        if st.button("Generate Plain-English Summary", type="primary"):
+                            with st.spinner("Asking Gemini to simplify the label…"):
+                                from agent.simplifier import simplify_label
+                                summary = simplify_label(result)
+                                st.session_state["simplified_summary"] = summary
+                            st.markdown(summary)
+            else:
+                st.info("Analyze a label to see a plain-English summary.")
 
-    with tab3:
-        st.subheader("Ask a Question")
-        result = st.session_state.get("ocr_result")
-        scanned_drug = (result.drug_name if result else "") or ""
+        with tab3:
+            result = st.session_state.get("ocr_result")
+            scanned_drug = (result.drug_name if result else "") or ""
 
-        if scanned_drug:
-            st.caption(f"Answering about your scanned drug: **{scanned_drug}**")
-        else:
-            st.caption("Tip: scan a label first so I can answer about that drug. "
-                       "You can still ask general questions.")
+            if scanned_drug:
+                st.caption(f"Answering about: **{scanned_drug}**")
+            else:
+                st.caption("Tip: scan a label first, or ask any general drug question.")
 
-        # render prior turns
-        for msg in st.session_state.get("chat_history", []):
-            with st.chat_message(msg["role"]):
-                st.write(msg["content"])
+            for msg in st.session_state.get("chat_history", []):
+                with st.chat_message(msg["role"]):
+                    st.write(msg["content"])
 
-        user_input = st.chat_input("e.g. What are the side effects? / Can I take this with Advil?")
-        if user_input:
-            st.session_state.setdefault("chat_history", []).append(
-                {"role": "user", "content": user_input}
-            )
-            with st.chat_message("user"):
-                st.write(user_input)
+            user_input = st.chat_input("e.g. What are the side effects? Can I take this with Advil?")
+            if user_input:
+                st.session_state.setdefault("chat_history", []).append(
+                    {"role": "user", "content": user_input}
+                )
+                with st.chat_message("user"):
+                    st.write(user_input)
 
-            with st.chat_message("assistant"):
-                with st.spinner("Searching labels, reranking, and drafting answer..."):
-                    try:
-                        ans = answer_question(user_input, scanned_drug)
-                    except Exception as exc:  # noqa: BLE001
-                        ans = {"kind": "error",
-                               "summary": f"Something went wrong: {exc}",
-                               "results": []}
+                with st.chat_message("assistant"):
+                    with st.spinner("Thinking…"):
+                        try:
+                            ans = answer_question(user_input, scanned_drug)
+                        except Exception as exc:
+                            ans = {"kind": "error",
+                                   "summary": f"Something went wrong: {exc}",
+                                   "results": []}
 
-                st.write(ans["summary"])
-                st.caption(f"Routed to: `{ans['kind']}`")
+                    st.write(ans["summary"])
+                    st.caption(f"Route: `{ans['kind']}`")
 
-                if ans["results"]:
-                    with st.expander(f"Top {len(ans['results'])} reranked sources"):
-                        for i, r in enumerate(ans["results"], 1):
-                            meta = r.get("metadata", {})
-                            st.markdown(
-                                f"**{i}. {meta.get('drug_name', '?')}** — "
-                                f"*{meta.get('section_type', '?')}*  "
-                                f"(score {r.get('final_score', 0):.2f})"
-                            )
-                            st.write(r["text"][:500] + "…")
-                            st.divider()
+                    if ans["results"]:
+                        with st.expander(f"{len(ans['results'])} FDA label sources"):
+                            for i, r in enumerate(ans["results"], 1):
+                                meta = r.get("metadata", {})
+                                st.markdown(
+                                    f"**{i}. {meta.get('drug_name','?')}** — "
+                                    f"*{meta.get('section_type','?')}* "
+                                    f"(score {r.get('final_score',0):.2f})"
+                                )
+                                st.write(r["text"][:500] + "…")
+                                st.divider()
 
-            st.session_state["chat_history"].append(
-                {"role": "assistant", "content": ans["summary"]}
-            )
+                st.session_state["chat_history"].append(
+                    {"role": "assistant", "content": ans["summary"]}
+                )
+
+    st.markdown('</div>', unsafe_allow_html=True)  # close ml-scanner
