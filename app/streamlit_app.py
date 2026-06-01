@@ -438,6 +438,14 @@ section[data-testid="stSidebar"] { display: none !important; }
   from { transform: scale(1) translateY(0px); }
   to   { transform: scale(1.07) translateY(-18px); }
 }
+.ml-hero-grid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(0,212,184,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,184,0.025) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none; z-index: 0;
+}
 .ml-hero-inner { position: relative; z-index: 1; }
 .ml-badge {
   display: inline-flex; align-items: center; gap: 8px;
@@ -524,6 +532,7 @@ section[data-testid="stSidebar"] { display: none !important; }
   backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255,255,255,0.08);
   border-radius: 20px; padding: 36px 32px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05);
   transition: transform .25s, box-shadow .25s, border-color .25s, background .25s;
 }
 .ml-card:hover {
@@ -762,6 +771,11 @@ div[data-baseweb="radio"] > label:hover {
   font-family: 'DM Sans', sans-serif !important;
 }
 div[data-testid="stDivider"] { border-color: rgba(255,255,255,0.07) !important; }
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: #080D18; }
+::-webkit-scrollbar-thumb { background: rgba(0,212,184,0.25); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,212,184,0.45); }
 </style>
 """, unsafe_allow_html=True)
 
@@ -789,6 +803,7 @@ if not _show_scanner:
 
     st.markdown("""
 <div class="ml-hero-wrap">
+  <div class="ml-hero-grid"></div>
   <div class="ml-hero-inner">
     <div class="ml-badge"><span class="ml-badge-dot"></span>FDA-Grounded &nbsp;·&nbsp; Free &nbsp;·&nbsp; Private</div>
     <div class="ml-hero">
@@ -836,11 +851,13 @@ if not _show_scanner:
   <div class="ml-cards">
     <div class="ml-card">
       <div class="ml-card-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#00D4B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="11" cy="11" r="8"/>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          <line x1="8" y1="11" x2="14" y2="11"/>
-          <line x1="11" y1="8" x2="11" y2="14"/>
+        <svg width="28" height="28" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M6 14V8a2 2 0 0 1 2-2h6" stroke="#00D4B8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M34 14V8a2 2 0 0 0-2-2h-6" stroke="#00D4B8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M6 26v6a2 2 0 0 0 2 2h6" stroke="#00D4B8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M34 26v6a2 2 0 0 1-2 2h-6" stroke="#00D4B8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          <line x1="6" y1="20" x2="34" y2="20" stroke="#00D4B8" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="3 2"/>
+          <circle cx="20" cy="20" r="2.5" fill="#00D4B8"/>
         </svg>
       </div>
       <h3>Smart scanning</h3>
@@ -848,8 +865,10 @@ if not _show_scanner:
     </div>
     <div class="ml-card">
       <div class="ml-card-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#00D4B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        <svg width="28" height="28" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M8 10a3 3 0 0 1 3-3h18a3 3 0 0 1 3 3v13a3 3 0 0 1-3 3H22l-5 5v-5H11a3 3 0 0 1-3-3V10Z" stroke="#00D4B8" stroke-width="2" stroke-linejoin="round"/>
+          <line x1="13" y1="15" x2="27" y2="15" stroke="#00D4B8" stroke-width="1.8" stroke-linecap="round"/>
+          <line x1="13" y1="20" x2="23" y2="20" stroke="#00D4B8" stroke-width="1.8" stroke-linecap="round" opacity="0.6"/>
         </svg>
       </div>
       <h3>Plain-English answers</h3>
@@ -857,8 +876,9 @@ if not _show_scanner:
     </div>
     <div class="ml-card">
       <div class="ml-card-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#00D4B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        <svg width="28" height="28" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M20 4L8 9v10c0 7.18 5.12 13.9 12 15.5C27.88 32.9 33 26.18 33 19V9L20 4Z" stroke="#00D4B8" stroke-width="2" stroke-linejoin="round"/>
+          <path d="M14 20l4 4 8-8" stroke="#00D4B8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </div>
       <h3>Grounded in FDA data</h3>
@@ -892,7 +912,7 @@ if not _show_scanner:
     st.markdown("""
 <div class="ml-cta-section">
   <h2>Ready to scan your first label?</h2>
-  <p>Takes under 10 seconds. No account needed.</p>
+  <p style="color:#8892A4;font-size:16px;margin-bottom:8px;">Takes under 10 seconds. No account needed.</p>
 </div>""", unsafe_allow_html=True)
 
     _, cta_col, _ = st.columns([3, 2, 3])
