@@ -345,12 +345,7 @@ def answer_question(question: str, scanned_drug: str) -> dict:
 # ─────────────────────────────────────────────────────────────────────────────
 # Page config
 # ─────────────────────────────────────────────────────────────────────────────
-st.set_page_config(
-    page_title="MedLabel",
-    page_icon="💊",
-    layout="wide",
-    initial_sidebar_state="collapsed",
-)
+st.set_page_config(page_title="MedLabel", layout="wide")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Design-system CSS (matches Figma: Inter font, teal #17B8A6, dark #0D2737)
@@ -564,13 +559,8 @@ div[data-baseweb="radio"] > label > div:first-child > div {
 """, unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Navigation state  (HTML buttons set ?scan=true; back button uses session_state)
+# Navigation state (pure session_state — no query params)
 # ─────────────────────────────────────────────────────────────────────────────
-if st.query_params.get("scan") == "true":
-    st.session_state["show_scanner"] = True
-    st.query_params.clear()
-    st.rerun()
-
 _show_scanner = st.session_state.get("show_scanner", False)
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -588,9 +578,6 @@ if not _show_scanner:
     <a href="#features">Features</a>
     <a href="#safety">Safety</a>
     <a href="#">Docs</a>
-    <a href="#"
-       onclick="window.location.search='?scan=true';return false;"
-       class="ml-btn ml-btn-primary ml-btn-sm">Scan a label</a>
   </div>
 </nav>
 
@@ -603,14 +590,19 @@ if not _show_scanner:
     Point your phone at any pill bottle, box, or blister pack. MedLabel reads it,
     explains it in plain English, and answers your questions — grounded in official FDA data.
   </p>
-  <div class="ml-hero-btns">
-    <a href="#"
-       onclick="window.location.search='?scan=true';return false;"
-       class="ml-btn ml-btn-primary">Scan a label</a>
-    <a href="#features" class="ml-btn ml-btn-outline">See how it works</a>
-  </div>
 </section>
+""", unsafe_allow_html=True)
 
+    # Native Streamlit CTA buttons (styled via CSS above)
+    _, c1, c2, _ = st.columns([2, 1.2, 1.2, 2])
+    with c1:
+        if st.button("Scan a label", key="hero_cta", type="primary", use_container_width=True):
+            st.session_state["show_scanner"] = True
+            st.rerun()
+    with c2:
+        st.button("See how it works", key="how_btn", use_container_width=True)
+
+    st.markdown("""
 <section class="ml-features" id="features">
   <div class="ml-features-title">Built for trust and clarity</div>
   <div class="ml-cards">
