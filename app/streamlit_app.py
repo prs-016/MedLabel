@@ -660,16 +660,9 @@ section[data-testid="stSidebar"] { display: none !important; }
 }
 
 /* ────────────────── STREAMLIT WIDGETS ────────────────── */
-/* Primary buttons — every selector Streamlit might use */
+/* Primary buttons — layout on the button element only */
 .stButton > button,
-.stButton > button *,
-.stButton > button p,
-[data-testid="stBaseButton-primary"],
-[data-testid="stBaseButton-primary"] *,
-[data-testid="stBaseButton-primary"] p,
-button[kind="primary"],
-button[kind="primary"] *,
-button[kind="primary"] p {
+[data-testid="stBaseButton-primary"] {
   background: var(--lime) !important;
   color: #07080D !important;
   border: none !important; border-radius: 10px !important;
@@ -678,12 +671,15 @@ button[kind="primary"] p {
   letter-spacing: -.1px !important;
   transition: opacity .18s, transform .18s !important;
   padding: 0 24px !important; height: 46px !important;
+  white-space: nowrap !important;
 }
-/* Defeat any markdown p color override inside primary buttons */
-.stButton > button p,
-[data-testid="stBaseButton-primary"] p,
-[data-testid="stMarkdownContainer"] .stButton p,
-.stMarkdown .stButton p { color: #07080D !important; }
+/* Force dark text on every child node — color only, no layout */
+.stButton > button *,
+[data-testid="stBaseButton-primary"] * {
+  color: #07080D !important;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  font-size: 14px !important; font-weight: 600 !important;
+}
 .stButton > button:hover,
 [data-testid="stBaseButton-primary"]:hover {
   opacity: .88 !important;
@@ -697,11 +693,10 @@ button[kind="primary"] p {
   color: var(--text2) !important;
   border: 1px solid var(--border) !important;
   box-shadow: none !important; height: 46px !important;
+  white-space: nowrap !important;
 }
 .stButton > button[kind="secondary"] *,
-[data-testid="stBaseButton-secondary"] * {
-  color: var(--text2) !important;
-}
+[data-testid="stBaseButton-secondary"] * { color: var(--text2) !important; }
 .stButton > button[kind="secondary"]:hover,
 [data-testid="stBaseButton-secondary"]:hover {
   border-color: rgba(255,255,255,0.2) !important;
@@ -710,22 +705,18 @@ button[kind="primary"] p {
   transform: none !important; box-shadow: none !important;
 }
 /* Back button */
-.back-btn button,
-.back-btn button * {
+.back-btn button {
   background: transparent !important;
   color: var(--text2) !important;
   border: 1px solid var(--border) !important;
-  box-shadow: none !important;
+  box-shadow: none !important; white-space: nowrap !important;
   font-size: 13px !important; font-weight: 500 !important;
   padding: 0 16px !important; height: 36px !important; border-radius: 8px !important;
   transform: none !important;
 }
-.back-btn button:hover,
-.back-btn button:hover * {
-  color: var(--text) !important;
-  border-color: rgba(255,255,255,0.2) !important;
-  background: rgba(255,255,255,0.04) !important;
-}
+.back-btn button * { color: var(--text2) !important; }
+.back-btn button:hover { color: var(--text) !important; border-color: rgba(255,255,255,0.2) !important; background: rgba(255,255,255,0.04) !important; }
+.back-btn button:hover * { color: var(--text) !important; }
 
 [data-testid="stFileUploaderDropzone"] {
   border: 1px dashed rgba(255,255,255,0.12) !important;
@@ -866,10 +857,9 @@ div[data-testid="stDivider"] { border-color: rgba(255,255,255,0.07) !important; 
   color: #F0F4FF !important;
   font-family: 'Plus Jakarta Sans', sans-serif !important;
 }
-/* Re-assert dark text inside ALL button variants after any p override */
-.stButton button p,
-[data-testid="stBaseButton-primary"] p,
-[data-testid="stBaseButton-secondary"] p { color: inherit !important; }
+/* Re-assert dark text inside primary buttons after any p override */
+.stButton > button p,
+[data-testid="stBaseButton-primary"] p { color: #07080D !important; }
 
 /* st.write plain text */
 [data-testid="stText"] {
