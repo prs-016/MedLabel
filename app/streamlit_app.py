@@ -4,8 +4,14 @@ import sys
 import tempfile
 from pathlib import Path
 
-import PIL.Image
 import streamlit as st
+
+# set_page_config must be the first Streamlit call; do it before anything else
+# so that errors further down are shown inside the app rather than as bare
+# "Error running app" with no traceback.
+st.set_page_config(page_title="MedLabel", layout="wide")
+
+import PIL.Image
 from dotenv import load_dotenv
 
 # Allow imports from src/
@@ -15,9 +21,12 @@ load_dotenv()
 
 # Merge Streamlit Cloud secrets into os.environ so all downstream code
 # (which reads os.getenv) works identically in local and cloud environments.
-for _k, _v in st.secrets.items():
-    if isinstance(_v, str):
-        os.environ.setdefault(_k, _v)
+try:
+    for _k, _v in st.secrets.items():
+        if isinstance(_v, str):
+            os.environ.setdefault(_k, _v)
+except Exception:
+    pass  # No secrets file present (local dev without secrets)
 
 # Common OTC brand -> generic, so questions like "take with Advil" resolve.
 _BRAND_TO_GENERIC = {
@@ -298,8 +307,6 @@ def answer_question(question: str, scanned_drug: str) -> dict:
 
     return {"kind": kind, "summary": summary, "results": results}
 
-
-st.set_page_config(page_title="MedLabel", layout="wide")
 
 st.title("MedLabel: Intelligent Medicine Scanner")
 st.markdown("*AI can make mistakes. Always verify with the physical label or your pharmacist.*")
