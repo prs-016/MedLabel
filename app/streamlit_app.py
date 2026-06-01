@@ -663,10 +663,13 @@ section[data-testid="stSidebar"] { display: none !important; }
 /* Primary buttons — every selector Streamlit might use */
 .stButton > button,
 .stButton > button *,
+.stButton > button p,
 [data-testid="stBaseButton-primary"],
 [data-testid="stBaseButton-primary"] *,
+[data-testid="stBaseButton-primary"] p,
 button[kind="primary"],
-button[kind="primary"] * {
+button[kind="primary"] *,
+button[kind="primary"] p {
   background: var(--lime) !important;
   color: #07080D !important;
   border: none !important; border-radius: 10px !important;
@@ -676,6 +679,11 @@ button[kind="primary"] * {
   transition: opacity .18s, transform .18s !important;
   padding: 0 24px !important; height: 46px !important;
 }
+/* Defeat any markdown p color override inside primary buttons */
+.stButton > button p,
+[data-testid="stBaseButton-primary"] p,
+[data-testid="stMarkdownContainer"] .stButton p,
+.stMarkdown .stButton p { color: #07080D !important; }
 .stButton > button:hover,
 [data-testid="stBaseButton-primary"]:hover {
   opacity: .88 !important;
@@ -846,8 +854,8 @@ div[data-testid="stDivider"] { border-color: rgba(255,255,255,0.07) !important; 
   max-width: 100% !important;
 }
 
-/* Every st.write / st.markdown paragraph */
-[data-testid="stMarkdownContainer"] p,
+/* Every st.write / st.markdown paragraph — exclude button internals */
+[data-testid="stMarkdownContainer"] p:not(.stButton p),
 [data-testid="stMarkdownContainer"] li,
 [data-testid="stMarkdownContainer"] h1,
 [data-testid="stMarkdownContainer"] h2,
@@ -858,6 +866,10 @@ div[data-testid="stDivider"] { border-color: rgba(255,255,255,0.07) !important; 
   color: #F0F4FF !important;
   font-family: 'Plus Jakarta Sans', sans-serif !important;
 }
+/* Re-assert dark text inside ALL button variants after any p override */
+.stButton button p,
+[data-testid="stBaseButton-primary"] p,
+[data-testid="stBaseButton-secondary"] p { color: inherit !important; }
 
 /* st.write plain text */
 [data-testid="stText"] {
