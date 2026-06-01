@@ -398,12 +398,15 @@ section[data-testid="stSidebar"] { display: none !important; }
 }
 .ml-logo {
   display: flex; align-items: center; gap: 10px;
-  text-decoration: none; flex-shrink: 0;
+  text-decoration: none !important; flex-shrink: 0;
 }
+.ml-logo:hover { text-decoration: none !important; }
+.ml-logo * { text-decoration: none !important; }
 .ml-logo-mark {
   width: 34px; height: 34px; border-radius: 9px;
   background: var(--lime); flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 0 1px rgba(200,255,87,0.35), inset 0 1px 0 rgba(255,255,255,0.25);
 }
 .ml-logo-mark svg { width: 20px; height: 20px; }
 .ml-logo-wordmark {
@@ -653,8 +656,10 @@ section[data-testid="stSidebar"] { display: none !important; }
 }
 .ml-footer-left { font-size: 13px; color: var(--text3); }
 .ml-footer-right { font-size: 12px; color: var(--text3); font-style: italic; }
-.ml-footer a { color: var(--text2) !important; text-decoration: none; }
-.ml-footer a:hover { color: var(--text) !important; }
+.ml-footer a { color: var(--text2) !important; text-decoration: none !important; }
+.ml-footer a:hover { color: var(--text) !important; text-decoration: none !important; }
+.ml-nav-links a { text-decoration: none !important; }
+.see-how-btn { text-decoration: none !important; }
 
 /* ────────────────── SCANNER ────────────────── */
 .ml-scanner { max-width: 1400px; margin: 0 auto; padding: 40px 7vw 60px; }
