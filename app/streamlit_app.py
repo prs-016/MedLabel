@@ -667,20 +667,36 @@ footer.ml-footer, .ml-footer {
 .see-how-btn { text-decoration: none !important; }
 
 /* ────────────────── SCANNER ────────────────── */
-.ml-scanner { max-width: 1400px; margin: 0 auto; padding: 40px 7vw 60px; }
-.ml-scanner-header { margin-bottom: 40px; }
+.ml-scanner-page [data-testid="stMainBlockContainer"],
+.ml-scanner-page .block-container {
+  padding: 0 max(24px, 5vw) 60px !important;
+  max-width: 100% !important;
+}
+.ml-scanner-header { margin: 8px 0 36px; }
 .ml-scanner-title {
   font-family: 'Cormorant Garamond', Georgia, serif;
   font-style: italic; font-weight: 700;
-  font-size: clamp(28px, 3vw, 42px); color: var(--text);
-  margin-bottom: 6px; line-height: 1.1;
+  font-size: clamp(32px, 3.5vw, 52px); color: var(--text);
+  margin-bottom: 8px; line-height: 1.05;
 }
-.ml-scanner-desc { font-size: 14px; color: var(--text2); font-weight: 300; }
+.ml-scanner-desc { font-size: 14px; color: var(--text2); font-weight: 300; line-height: 1.7; }
 .ml-label {
   font-family: 'Space Mono', monospace;
   font-size: 10px; color: var(--text3); letter-spacing: 1.5px;
   text-transform: uppercase; margin-bottom: 10px;
 }
+/* Override Streamlit blue info/success/warning in scanner */
+[data-testid="stNotification"],
+[data-testid="stAlertContainer"],
+div[data-testid="stInfo"],
+div.stInfo, div[class*="stAlert"] {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 12px !important;
+  color: var(--text) !important;
+}
+div[data-testid="stInfo"] svg,
+div[class*="stAlert"] svg { color: var(--lime) !important; stroke: var(--lime) !important; }
 
 /* ────────────────── STREAMLIT WIDGETS ────────────────── */
 /* Primary buttons — layout on the button element only */
@@ -1012,7 +1028,7 @@ if not _show_scanner:
   <div class="ml-nav-links">
     <a href="#" data-scrollto="ml-features">Features</a>
     <a href="#" data-scrollto="ml-how">How it works</a>
-    <a href="#" data-scrollto="ml-safety">Safety</a>
+    <a href="#" data-scrollto="ml-safety">Disclaimer</a>
   </div>
 </nav>""", unsafe_allow_html=True)
 
@@ -1202,7 +1218,13 @@ else:
   </div>
 </nav>""", unsafe_allow_html=True)
 
-    st.markdown('<div class="ml-scanner">', unsafe_allow_html=True)
+    st.markdown("""
+<style>
+[data-testid="stMainBlockContainer"], .block-container {
+  padding: 0 max(24px, 5vw) 60px !important;
+  max-width: 100% !important;
+}
+</style>""", unsafe_allow_html=True)
 
     _bc, _tc = st.columns([1, 7])
     with _bc:
