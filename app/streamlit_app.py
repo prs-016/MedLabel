@@ -194,11 +194,31 @@ def _find_other_drug(question: str, scanned: str) -> str:
     return ""
 
 
+def _db_available() -> bool:
+    try:
+        from knowledge.chroma_config import get_chroma_db_path
+        p = get_chroma_db_path()
+        return os.path.isdir(p) and any(os.scandir(p))
+    except Exception:
+        return False
+
+
 def answer_question(question: str, scanned_drug: str) -> dict:
     """
     Route a user question to the right trained function and return
     {'kind', 'summary', 'results'} where results is a list of ranked chunks.
     """
+    if not _db_available():
+        return {
+            "kind": "unavailable",
+            "summary": (
+                "The drug knowledge base is not available in this deployment. "
+                "Run `python run_seed.py` locally to populate `medlabel_db`, "
+                "or ask a general question — OCR and label simplification still work."
+            ),
+            "results": [],
+        }
+
     from knowledge.query_functions import (
         vector_search, adverse_events, interaction_check,
     )
@@ -293,10 +313,17 @@ with st.sidebar:
     if xai_status == "Missing":
         st.caption("Add `XAI_API_KEY=...` to your `.env` file for OCR and chat answers.")
     try:
-        from knowledge.chroma_config import get_collection_name
-        from knowledge.embedder import DrugEmbedder
-        _n = DrugEmbedder().collection.count()
-        st.caption(f"Label DB: `{get_collection_name()}` — **{_n}** chunks")
+        from knowledge.chroma_config import get_chroma_db_path, get_collection_name
+        _db_path = get_chroma_db_path()
+        if os.path.isdir(_db_path) and any(os.scandir(_db_path)):
+            @st.cache_resource(show_spinner=False)
+            def _load_embedder():
+                from knowledge.embedder import DrugEmbedder
+                return DrugEmbedder()
+            _n = _load_embedder().collection.count()
+            st.caption(f"Label DB: `{get_collection_name()}` — **{_n}** chunks")
+        else:
+            st.caption("Label DB: not available in this deployment")
     except Exception:
         st.caption("Label DB: run ingest to populate medlabel_db")
     st.divider()
