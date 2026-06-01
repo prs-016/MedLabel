@@ -350,218 +350,423 @@ def answer_question(question: str, scanned_drug: str) -> dict:
 st.set_page_config(page_title="MedLabel", layout="wide")
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Design-system CSS (matches Figma: Inter font, teal #17B8A6, dark #0D2737)
+# Design system — MedTech Noir: Syne + DM Sans, deep navy, electric teal
 # ─────────────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap');
+
+:root {
+  --bg:           #080D18;
+  --bg-2:         #0D1425;
+  --glass:        rgba(255,255,255,0.04);
+  --glass-hover:  rgba(255,255,255,0.07);
+  --border:       rgba(255,255,255,0.08);
+  --accent:       #00D4B8;
+  --accent-dim:   #00B09E;
+  --accent-glow:  rgba(0,212,184,0.22);
+  --indigo:       #6366F1;
+  --text-1:       #E8EEFF;
+  --text-2:       #8892A4;
+  --text-3:       #4B5A6E;
+  scroll-behavior: smooth;
+}
 
 *, *::before, *::after { box-sizing: border-box; }
 
 body, .stApp, .main, [data-testid="stAppViewContainer"] {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
-    background: #F5F9FA !important;
+  font-family: 'DM Sans', -apple-system, sans-serif !important;
+  background: var(--bg) !important;
+  color: var(--text-1) !important;
 }
 
-/* ── Hide Streamlit chrome ── */
 #MainMenu, header[data-testid="stHeader"], footer,
 .stDeployButton, [data-testid="collapsedControl"],
 section[data-testid="stSidebar"] { display: none !important; }
 
 .block-container,
 [data-testid="stMainBlockContainer"] {
-    padding: 0 !important;
-    max-width: 100% !important;
+  padding: 0 !important;
+  max-width: 100% !important;
 }
 
 /* ── Navbar ── */
 .ml-nav {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 0 80px; height: 72px;
-    background: #ffffff; border-bottom: 1px solid #E5EDF0;
-    position: sticky; top: 0; z-index: 1000;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 80px; height: 72px;
+  background: rgba(8,13,24,0.85);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 1000;
 }
 .ml-logo {
-    display: flex; align-items: center; gap: 10px;
-    font-weight: 700; font-size: 17px; color: #0D2737;
-    text-decoration: none;
+  display: flex; align-items: center; gap: 10px;
+  font-family: 'Syne', sans-serif; font-weight: 800;
+  font-size: 18px; color: var(--text-1); text-decoration: none;
 }
 .ml-logo-icon {
-    width: 32px; height: 32px; background: #17B8A6;
-    border-radius: 8px; flex-shrink: 0;
+  width: 34px; height: 34px;
+  background: linear-gradient(135deg, #00D4B8 0%, #00A896 100%);
+  border-radius: 9px; flex-shrink: 0;
+  box-shadow: 0 0 16px rgba(0,212,184,0.35);
 }
-.ml-nav-links { display: flex; align-items: center; gap: 28px; }
+.ml-nav-links { display: flex; align-items: center; gap: 32px; }
 .ml-nav-links a {
-    color: #374151; text-decoration: none;
-    font-size: 15px; font-weight: 500; transition: color .15s;
+  color: var(--text-2); text-decoration: none;
+  font-size: 14px; font-weight: 500;
+  transition: color .2s;
 }
-.ml-nav-links a:hover { color: #17B8A6; }
-
-/* ── Shared buttons ── */
-.ml-btn {
-    display: inline-flex; align-items: center; justify-content: center;
-    border-radius: 10px; font-weight: 600; font-size: 15px;
-    cursor: pointer; text-decoration: none !important;
-    transition: all .15s; border: none; padding: 11px 24px;
-    font-family: 'Inter', sans-serif;
-}
-.ml-btn-primary { background: #17B8A6 !important; color: #ffffff !important; }
-.ml-btn-primary:hover { background: #0FA898 !important; color: #ffffff !important; }
-.ml-btn-outline {
-    background: transparent !important; color: #0D2737 !important;
-    border: 2px solid #0D2737 !important;
-}
-.ml-btn-outline:hover { background: #0D2737 !important; color: #ffffff !important; }
-.ml-btn-sm { padding: 8px 18px !important; font-size: 14px !important; }
+.ml-nav-links a:hover { color: var(--accent); }
 
 /* ── Hero ── */
-.ml-hero {
-    text-align: center; padding: 90px 20px 110px;
-    background: #F5F9FA;
+.ml-hero-wrap {
+  position: relative; overflow: hidden;
+  background: var(--bg);
+  padding: 110px 20px 100px;
+  text-align: center;
 }
+.ml-hero-wrap::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 700px 500px at 20% 50%, rgba(0,212,184,0.09) 0%, transparent 70%),
+    radial-gradient(ellipse 600px 400px at 80% 60%, rgba(99,102,241,0.07) 0%, transparent 70%);
+  animation: orb-drift 14s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+@keyframes orb-drift {
+  from { transform: scale(1) translateY(0px); }
+  to   { transform: scale(1.07) translateY(-18px); }
+}
+.ml-hero-inner { position: relative; z-index: 1; }
 .ml-badge {
-    display: inline-flex; align-items: center; gap: 7px;
-    color: #17B8A6; font-size: 13px; font-weight: 600;
-    letter-spacing: .3px; margin-bottom: 28px;
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(0,212,184,0.09); border: 1px solid rgba(0,212,184,0.22);
+  border-radius: 999px; padding: 6px 16px;
+  font-size: 12px; font-weight: 600; letter-spacing: .8px;
+  color: var(--accent); text-transform: uppercase; margin-bottom: 32px;
 }
 .ml-badge-dot {
-    width: 8px; height: 8px; background: #17B8A6;
-    border-radius: 50%; display: inline-block;
+  width: 7px; height: 7px; background: var(--accent);
+  border-radius: 50%; display: inline-block;
+  animation: pulse-dot 2.2s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.45; transform: scale(0.65); }
 }
 .ml-hero h1 {
-    font-size: clamp(36px, 5vw, 60px); font-weight: 800; color: #0D2737;
-    line-height: 1.08; max-width: 860px; margin: 0 auto 22px;
-    letter-spacing: -.5px;
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(38px, 5.5vw, 68px); font-weight: 800;
+  color: var(--text-1); line-height: 1.07;
+  max-width: 860px; margin: 0 auto 24px;
+  letter-spacing: -.5px;
+}
+.ml-hero h1 .hl {
+  background: linear-gradient(90deg, #00D4B8 0%, #6366F1 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 .ml-hero-sub {
-    font-size: 18px; color: #6B7C8D; max-width: 520px;
-    margin: 0 auto 44px; line-height: 1.65;
+  font-size: 18px; color: var(--text-2); max-width: 520px;
+  margin: 0 auto 52px; line-height: 1.7;
 }
-.ml-hero-btns {
-    display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;
+
+/* see-how anchor button */
+.see-how-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; padding: 12px 20px; border-radius: 12px;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  color: #E8EEFF !important; font-family: 'DM Sans', sans-serif;
+  font-size: 15px; font-weight: 600; text-decoration: none !important;
+  transition: border-color .2s, color .2s, background .2s;
+  cursor: pointer;
+}
+.see-how-btn:hover {
+  border-color: rgba(0,212,184,0.5); color: #00D4B8 !important;
+  background: rgba(0,212,184,0.06);
+}
+
+/* ── Trust strip ── */
+.ml-trust-strip {
+  display: flex; justify-content: center; align-items: center;
+  flex-wrap: wrap; gap: 32px;
+  padding: 20px 80px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.015);
+}
+.ml-trust-item {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 13px; color: var(--text-3); font-weight: 500;
 }
 
 /* ── Features ── */
-.ml-features { padding: 88px 80px; background: #F5F9FA; }
+.ml-features { padding: 96px 80px; background: var(--bg); }
+.ml-features-eyebrow {
+  text-align: center; font-size: 12px; font-weight: 600;
+  letter-spacing: 1.2px; text-transform: uppercase;
+  color: var(--accent); margin-bottom: 14px;
+}
 .ml-features-title {
-    text-align: center; font-size: clamp(26px, 3vw, 38px);
-    font-weight: 800; color: #0D2737; margin-bottom: 52px;
-    letter-spacing: -.3px;
+  text-align: center;
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(28px, 3.5vw, 42px); font-weight: 800;
+  color: var(--text-1); margin-bottom: 64px; letter-spacing: -.3px;
 }
 .ml-cards {
-    display: grid; grid-template-columns: repeat(3, 1fr);
-    gap: 24px; max-width: 1100px; margin: 0 auto;
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 24px; max-width: 1100px; margin: 0 auto;
 }
 @media (max-width: 900px) { .ml-cards { grid-template-columns: 1fr; } }
 .ml-card {
-    background: #ffffff; border-radius: 18px;
-    padding: 32px 28px; border: 1px solid #E5EDF0;
-    transition: box-shadow .2s;
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px; padding: 36px 32px;
+  transition: transform .25s, box-shadow .25s, border-color .25s, background .25s;
 }
-.ml-card:hover { box-shadow: 0 4px 24px rgba(23,184,166,.12); }
+.ml-card:hover {
+  transform: translateY(-5px);
+  border-color: rgba(0,212,184,0.28);
+  background: rgba(255,255,255,0.07);
+  box-shadow: 0 12px 48px rgba(0,212,184,0.07);
+}
 .ml-card-icon {
-    width: 52px; height: 52px; background: #E8F8F6;
-    border-radius: 14px; margin-bottom: 22px;
+  width: 56px; height: 56px;
+  background: rgba(0,212,184,0.1); border-radius: 16px;
+  margin-bottom: 24px;
+  display: flex; align-items: center; justify-content: center;
 }
+.ml-card-icon svg { width: 26px; height: 26px; }
 .ml-card h3 {
-    font-size: 18px; font-weight: 700; color: #0D2737; margin-bottom: 10px;
+  font-family: 'Syne', sans-serif;
+  font-size: 18px; font-weight: 700; color: #E8EEFF; margin-bottom: 12px;
 }
-.ml-card p { font-size: 14px; color: #6B7C8D; line-height: 1.65; }
+.ml-card p { font-size: 14px; color: #8892A4; line-height: 1.7; }
+
+/* ── How it works ── */
+.ml-how {
+  padding: 96px 80px;
+  background: linear-gradient(180deg, #080D18 0%, #0A1120 100%);
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+.ml-how-eyebrow {
+  text-align: center; font-size: 12px; font-weight: 600;
+  letter-spacing: 1.2px; text-transform: uppercase;
+  color: #6366F1; margin-bottom: 14px;
+}
+.ml-how-title {
+  text-align: center;
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(28px, 3.5vw, 42px); font-weight: 800;
+  color: #E8EEFF; margin-bottom: 64px; letter-spacing: -.3px;
+}
+.ml-steps {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 0; max-width: 860px; margin: 0 auto; position: relative;
+}
+.ml-steps::before {
+  content: ''; position: absolute;
+  top: 27px; left: calc(16.66% + 28px); right: calc(16.66% + 28px);
+  height: 1px;
+  background: linear-gradient(90deg, rgba(0,212,184,0.4) 0%, rgba(99,102,241,0.4) 100%);
+}
+.ml-step {
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center; padding: 0 28px;
+}
+.ml-step-num {
+  width: 54px; height: 54px; border-radius: 50%;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.10);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 800;
+  color: #00D4B8; margin-bottom: 22px;
+  position: relative; z-index: 1;
+}
+.ml-step h4 {
+  font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700;
+  color: #E8EEFF; margin-bottom: 8px;
+}
+.ml-step p { font-size: 13px; color: #8892A4; line-height: 1.65; }
+
+/* ── Bottom CTA section ── */
+.ml-cta-section {
+  text-align: center; padding: 88px 20px;
+  background: var(--bg);
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+.ml-cta-section h2 {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(26px, 3.5vw, 40px); font-weight: 800;
+  color: #E8EEFF; margin-bottom: 12px; letter-spacing: -.3px;
+}
+.ml-cta-section p {
+  color: #8892A4; font-size: 16px; margin-bottom: 40px;
+}
 
 /* ── Footer ── */
 .ml-footer {
-    background: #E8F4F2; padding: 36px 80px;
-    text-align: center; color: #6B7C8D;
-    font-size: 14px; border-top: 1px solid #C8E8E2;
+  padding: 40px 80px; border-top: 1px solid rgba(255,255,255,0.06);
+  text-align: center; color: #4B5A6E; font-size: 13px;
+  background: #080D18;
 }
+.ml-footer a { color: #8892A4 !important; text-decoration: none; }
+.ml-footer a:hover { color: #00D4B8 !important; }
 
 /* ── Scanner page ── */
-.ml-scanner { max-width: 1280px; margin: 0 auto; padding: 36px 48px; }
-.ml-scanner-header { margin-bottom: 32px; }
+.ml-scanner { max-width: 1320px; margin: 0 auto; padding: 40px 56px; }
+.ml-scanner-header { margin-bottom: 36px; }
 .ml-scanner-title {
-    font-size: 26px; font-weight: 800; color: #0D2737; margin-bottom: 6px;
+  font-family: 'Syne', sans-serif;
+  font-size: 28px; font-weight: 800; color: #E8EEFF; margin-bottom: 6px;
 }
-.ml-scanner-desc { font-size: 15px; color: #6B7C8D; }
+.ml-scanner-desc { font-size: 15px; color: #8892A4; }
 .ml-label {
-    font-size: 11px; font-weight: 700; color: #6B7C8D;
-    letter-spacing: .8px; text-transform: uppercase; margin-bottom: 8px;
+  font-size: 11px; font-weight: 600; color: #4B5A6E;
+  letter-spacing: .9px; text-transform: uppercase; margin-bottom: 10px;
 }
 
 /* ── Streamlit widget overrides ── */
 .stButton > button {
-    background: #17B8A6 !important; color: #ffffff !important;
-    border: none !important; border-radius: 10px !important;
-    font-family: 'Inter', sans-serif !important; font-weight: 600 !important;
-    font-size: 15px !important; transition: background .15s !important;
+  background: linear-gradient(135deg, #00D4B8 0%, #00A896 100%) !important;
+  color: #080D18 !important;
+  border: none !important; border-radius: 12px !important;
+  font-family: 'DM Sans', sans-serif !important;
+  font-weight: 600 !important; font-size: 15px !important;
+  transition: all .2s ease !important;
 }
-.stButton > button:hover { background: #0FA898 !important; }
+.stButton > button:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 28px rgba(0,212,184,0.28) !important;
+}
 .stButton > button[kind="secondary"] {
-    background: transparent !important; color: #0D2737 !important;
-    border: 2px solid #E5EDF0 !important;
+  background: rgba(255,255,255,0.04) !important;
+  color: #E8EEFF !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  box-shadow: none !important;
 }
 .stButton > button[kind="secondary"]:hover {
-    border-color: #17B8A6 !important; color: #17B8A6 !important;
-    background: transparent !important;
+  border-color: rgba(0,212,184,0.4) !important;
+  color: #00D4B8 !important;
+  background: rgba(0,212,184,0.05) !important;
+  transform: none !important;
 }
-div[data-testid="stBackButton"] button,
 .back-btn button {
-    background: transparent !important; color: #17B8A6 !important;
-    border: none !important; font-size: 14px !important;
-    font-weight: 500 !important; padding: 0 !important;
-    box-shadow: none !important;
+  background: transparent !important; color: #00D4B8 !important;
+  border: none !important; box-shadow: none !important;
+  font-size: 14px !important; padding: 0 !important;
+  font-weight: 500 !important; transform: none !important;
 }
+.back-btn button:hover { opacity: 0.75 !important; }
 
 [data-testid="stFileUploaderDropzone"] {
-    border: 2px dashed #17B8A6 !important;
-    border-radius: 14px !important; background: #F0FBF9 !important;
+  border: 1.5px dashed rgba(0,212,184,0.35) !important;
+  border-radius: 16px !important;
+  background: rgba(0,212,184,0.025) !important;
+}
+[data-testid="stFileUploaderDropzone"]:hover {
+  border-color: #00D4B8 !important;
+  background: rgba(0,212,184,0.055) !important;
 }
 
 .stTabs [data-baseweb="tab-list"] {
-    gap: 0; background: transparent;
-    border-bottom: 2px solid #E5EDF0;
+  gap: 0; background: transparent;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
 }
 .stTabs [data-baseweb="tab"] {
-    font-family: 'Inter', sans-serif !important;
-    font-weight: 600 !important; color: #6B7C8D !important;
-    background: transparent; border: none; padding: 10px 20px;
+  font-family: 'DM Sans', sans-serif !important;
+  font-weight: 600 !important; color: #8892A4 !important;
+  background: transparent; border: none; padding: 10px 22px;
 }
 .stTabs [aria-selected="true"] {
-    color: #17B8A6 !important;
-    border-bottom: 2px solid #17B8A6 !important;
+  color: #00D4B8 !important;
+  border-bottom: 2px solid #00D4B8 !important;
 }
 
 [data-testid="stMetric"] {
-    background: #ffffff; border-radius: 12px;
-    padding: 16px 20px; border: 1px solid #E5EDF0;
+  background: rgba(255,255,255,0.04) !important;
+  backdrop-filter: blur(12px);
+  border-radius: 14px; padding: 18px 22px;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+}
+[data-testid="stMetric"] label {
+  color: #8892A4 !important; font-family: 'DM Sans', sans-serif !important;
+}
+[data-testid="stMetric"] [data-testid="stMetricValue"] {
+  color: #E8EEFF !important; font-family: 'Syne', sans-serif !important;
+  font-weight: 700 !important;
 }
 
 .stTextArea textarea,
 [data-testid="stChatInput"] textarea {
-    border-radius: 12px !important; border-color: #E5EDF0 !important;
-    font-family: 'Inter', sans-serif !important;
+  background: rgba(255,255,255,0.04) !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  border-radius: 14px !important;
+  color: #E8EEFF !important;
+  font-family: 'DM Sans', sans-serif !important;
+}
+.stTextArea textarea:focus,
+[data-testid="stChatInput"] textarea:focus {
+  border-color: #00D4B8 !important;
+  box-shadow: 0 0 0 2px rgba(0,212,184,0.15) !important;
 }
 
 .stRadio label, .stRadio p {
-    font-family: 'Inter', sans-serif !important; color: #374151 !important;
+  font-family: 'DM Sans', sans-serif !important;
+  color: #8892A4 !important;
 }
-
 div[data-baseweb="radio"] > label > div:first-child > div {
-    border-color: #17B8A6 !important;
+  border-color: #00D4B8 !important;
+}
+div[data-baseweb="radio"] > label {
+  background: rgba(255,255,255,0.03) !important;
+  border: 1px solid rgba(255,255,255,0.07) !important;
+  border-radius: 10px !important;
+  padding: 10px 14px !important;
+  margin-bottom: 6px !important;
+  transition: border-color .2s, background .2s;
+}
+div[data-baseweb="radio"] > label:hover {
+  border-color: rgba(0,212,184,0.3) !important;
+  background: rgba(0,212,184,0.04) !important;
 }
 
-.stAlert, .stSuccess, .stInfo, .stWarning, .stError {
-    border-radius: 12px !important;
-    font-family: 'Inter', sans-serif !important;
+.stAlert, .element-container .stSuccess,
+.element-container .stInfo,
+.element-container .stWarning,
+.element-container .stError {
+  border-radius: 14px !important;
+  font-family: 'DM Sans', sans-serif !important;
 }
-
-.stSpinner p { font-family: 'Inter', sans-serif !important; color: #6B7C8D !important; }
-
-.stExpander { border: 1px solid #E5EDF0 !important; border-radius: 12px !important; }
+.stSpinner p {
+  font-family: 'DM Sans', sans-serif !important;
+  color: #8892A4 !important;
+}
+.stExpander {
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  border-radius: 14px !important;
+  background: rgba(255,255,255,0.03) !important;
+}
+[data-testid="stChatMessage"] {
+  background: rgba(255,255,255,0.04) !important;
+  border: 1px solid rgba(255,255,255,0.07) !important;
+  border-radius: 14px !important;
+}
+[data-testid="stImage"] img {
+  border-radius: 14px !important;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.stCaption p, small {
+  color: #4B5A6E !important;
+  font-family: 'DM Sans', sans-serif !important;
+}
+div[data-testid="stDivider"] { border-color: rgba(255,255,255,0.07) !important; }
 </style>
 """, unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Navigation state (pure session_state — no query params)
+# Navigation state
 # ─────────────────────────────────────────────────────────────────────────────
 _show_scanner = st.session_state.get("show_scanner", False)
 
@@ -576,60 +781,131 @@ if not _show_scanner:
     MedLabel
   </a>
   <div class="ml-nav-links">
-    <a href="#how-it-works">How it works</a>
-    <a href="#features">Features</a>
-    <a href="#safety">Safety</a>
-    <a href="#">Docs</a>
+    <a href="#ml-features">Features</a>
+    <a href="#ml-how">How it works</a>
+    <a href="#ml-safety">Safety</a>
   </div>
-</nav>
+</nav>""", unsafe_allow_html=True)
 
-<section class="ml-hero" id="how-it-works">
-  <div class="ml-badge">
-    <span class="ml-badge-dot"></span>Safe
+    st.markdown("""
+<div class="ml-hero-wrap">
+  <div class="ml-hero-inner">
+    <div class="ml-badge"><span class="ml-badge-dot"></span>FDA-Grounded &nbsp;·&nbsp; Free &nbsp;·&nbsp; Private</div>
+    <div class="ml-hero">
+      <h1>Read any medicine label<br><span class="hl">in plain English</span></h1>
+      <p class="ml-hero-sub">
+        Point your phone at any pill bottle, box, or blister pack. MedLabel reads it,
+        explains it clearly, and answers your questions — grounded in official FDA data.
+      </p>
+    </div>
   </div>
-  <h1>Understand any medicine label in seconds</h1>
-  <p class="ml-hero-sub">
-    Point your phone at any pill bottle, box, or blister pack. MedLabel reads it,
-    explains it in plain English, and answers your questions — grounded in official FDA data.
-  </p>
-</section>
-""", unsafe_allow_html=True)
+</div>""", unsafe_allow_html=True)
 
-    # Native Streamlit CTA buttons (styled via CSS above)
     _, c1, c2, _ = st.columns([2, 1.2, 1.2, 2])
     with c1:
-        if st.button("Scan a label", key="hero_cta", type="primary", use_container_width=True):
+        if st.button("Scan a label →", key="hero_cta", type="primary", use_container_width=True):
             st.session_state["show_scanner"] = True
             st.rerun()
     with c2:
-        st.button("See how it works", key="how_btn", use_container_width=True)
+        st.markdown("""<a href="#ml-features" class="see-how-btn">See how it works</a>""",
+                    unsafe_allow_html=True)
 
     st.markdown("""
-<section class="ml-features" id="features">
+<div class="ml-trust-strip">
+  <div class="ml-trust-item">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#00D4B8" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+    5,976 FDA label chunks
+  </div>
+  <div class="ml-trust-item">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#00D4B8" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+    YOLO + OCR pipeline
+  </div>
+  <div class="ml-trust-item">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#00D4B8" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+    Grok &amp; Gemini AI
+  </div>
+  <div class="ml-trust-item">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#00D4B8" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+    No data stored
+  </div>
+</div>
+
+<section class="ml-features" id="ml-features">
+  <div class="ml-features-eyebrow">Capabilities</div>
   <div class="ml-features-title">Built for trust and clarity</div>
   <div class="ml-cards">
     <div class="ml-card">
-      <div class="ml-card-icon"></div>
+      <div class="ml-card-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#00D4B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          <line x1="8" y1="11" x2="14" y2="11"/>
+          <line x1="11" y1="8" x2="11" y2="14"/>
+        </svg>
+      </div>
       <h3>Smart scanning</h3>
-      <p>YOLO routes each photo to the right reader — OCR for flat labels, Vision AI for curved bottles.</p>
+      <p>YOLO geometry detection routes each photo to the right pipeline — PaddleOCR for flat labels, Vision AI for curved bottles.</p>
     </div>
     <div class="ml-card">
-      <div class="ml-card-icon"></div>
+      <div class="ml-card-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#00D4B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+      </div>
       <h3>Plain-English answers</h3>
-      <p>Medical jargon simplified to a 5th-grade reading level, every time.</p>
+      <p>Medical jargon simplified to a 5th-grade reading level. Ask anything — side effects, dosage, interactions — in natural language.</p>
     </div>
     <div class="ml-card">
-      <div class="ml-card-icon"></div>
+      <div class="ml-card-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#00D4B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+      </div>
       <h3>Grounded in FDA data</h3>
-      <p>Every answer is cited from official FDA drug labels — never hallucinated.</p>
+      <p>Every answer is retrieved from 5,976 chunks of official FDA drug labels — never hallucinated, always cited.</p>
     </div>
   </div>
 </section>
 
-<footer class="ml-footer" id="safety">
-  <p>© 2026 MedLabel &nbsp;·&nbsp; An informational tool, not a substitute for professional medical advice.</p>
-</footer>
-""", unsafe_allow_html=True)
+<section class="ml-how" id="ml-how">
+  <div class="ml-how-eyebrow">Process</div>
+  <div class="ml-how-title">Three steps to clarity</div>
+  <div class="ml-steps">
+    <div class="ml-step">
+      <div class="ml-step-num">01</div>
+      <h4>Upload a photo</h4>
+      <p>Take a picture of any medicine label — pill bottle, box, or blister pack.</p>
+    </div>
+    <div class="ml-step">
+      <div class="ml-step-num">02</div>
+      <h4>AI reads the label</h4>
+      <p>YOLO detects geometry, then OCR or Vision AI extracts the text accurately.</p>
+    </div>
+    <div class="ml-step">
+      <div class="ml-step-num">03</div>
+      <h4>Get plain answers</h4>
+      <p>Ask questions in natural language. Grok answers using official FDA data.</p>
+    </div>
+  </div>
+</section>""", unsafe_allow_html=True)
+
+    st.markdown("""
+<div class="ml-cta-section">
+  <h2>Ready to scan your first label?</h2>
+  <p>Takes under 10 seconds. No account needed.</p>
+</div>""", unsafe_allow_html=True)
+
+    _, cta_col, _ = st.columns([3, 2, 3])
+    with cta_col:
+        if st.button("Get started — scan a label", key="bottom_cta", type="primary", use_container_width=True):
+            st.session_state["show_scanner"] = True
+            st.rerun()
+
+    st.markdown("""
+<footer class="ml-footer" id="ml-safety">
+  <p>&#169; 2026 MedLabel &nbsp;&middot;&nbsp; <a href="#">Privacy</a> &nbsp;&middot;&nbsp; <a href="#">Terms</a></p>
+  <p style="margin-top:8px;font-size:12px;">An informational tool only &#8212; not a substitute for professional medical advice. Always verify with your pharmacist.</p>
+</footer>""", unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # SCANNER
@@ -644,20 +920,18 @@ else:
     MedLabel
   </a>
   <div class="ml-nav-links">
-    <span style="font-size:13px;color:#6B7C8D;font-family:Inter,sans-serif;">
-      AI can make mistakes — always verify with your pharmacist.
+    <span style="font-size:13px;color:#4B5A6E;font-family:'DM Sans',sans-serif;">
+      AI can make mistakes &#8212; always verify with your pharmacist.
     </span>
   </div>
-</nav>
-""", unsafe_allow_html=True)
+</nav>""", unsafe_allow_html=True)
 
     st.markdown('<div class="ml-scanner">', unsafe_allow_html=True)
 
-    # Back button + page title
     _bc, _tc = st.columns([1, 7])
     with _bc:
         st.markdown('<div class="back-btn">', unsafe_allow_html=True)
-        if st.button("← Home", key="back_home"):
+        if st.button("← Back", key="back_home"):
             st.session_state["show_scanner"] = False
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
@@ -665,9 +939,8 @@ else:
     st.markdown("""
 <div class="ml-scanner-header">
   <div class="ml-scanner-title">Scan your medicine label</div>
-  <div class="ml-scanner-desc">Upload a photo — MedLabel reads it, simplifies it, and answers your questions.</div>
-</div>
-""", unsafe_allow_html=True)
+  <div class="ml-scanner-desc">Upload a photo &#8212; MedLabel reads it, simplifies it, and answers your questions.</div>
+</div>""", unsafe_allow_html=True)
 
     col1, col2 = st.columns([1, 1], gap="large")
 
@@ -677,9 +950,9 @@ else:
             "Label type",
             options=["cylindrical", "flat", "auto"],
             format_func=lambda x: {
-                "cylindrical": "🫙  Bottle / curved label  (xAI Vision)",
-                "flat":        "📦  Flat label  (PaddleOCR)",
-                "auto":        "🤖  Auto-detect  (YOLO)",
+                "cylindrical": "\U0001fad9  Bottle / curved label  (xAI Vision)",
+                "flat":        "\U0001f4e6  Flat label  (PaddleOCR)",
+                "auto":        "\U0001f916  Auto-detect  (YOLO)",
             }[x],
             index=0,
             label_visibility="collapsed",
@@ -851,4 +1124,4 @@ else:
                     {"role": "assistant", "content": ans["summary"]}
                 )
 
-    st.markdown('</div>', unsafe_allow_html=True)  # close ml-scanner
+    st.markdown('</div>', unsafe_allow_html=True)
