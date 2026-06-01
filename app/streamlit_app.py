@@ -6,6 +6,7 @@ from pathlib import Path
 
 import PIL.Image
 import streamlit as st
+import streamlit.components.v1 as components
 from dotenv import load_dotenv
 
 # Allow imports from src/
@@ -350,397 +351,476 @@ def answer_question(question: str, scanned_drug: str) -> dict:
 st.set_page_config(page_title="MedLabel", layout="wide")
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Design system — MedTech Noir: Syne + DM Sans, deep navy, electric teal
+# Design system — Pharma Editorial: Cormorant + Jakarta Sans, citrus accent
 # ─────────────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600;1,700;1,800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
 
 :root {
-  --bg:           #080D18;
-  --bg-2:         #0D1425;
-  --glass:        rgba(255,255,255,0.04);
-  --glass-hover:  rgba(255,255,255,0.07);
-  --border:       rgba(255,255,255,0.08);
-  --accent:       #00D4B8;
-  --accent-dim:   #00B09E;
-  --accent-glow:  rgba(0,212,184,0.22);
-  --indigo:       #6366F1;
-  --text-1:       #E8EEFF;
-  --text-2:       #8892A4;
-  --text-3:       #4B5A6E;
+  --bg:       #07080D;
+  --surface:  #0E0F16;
+  --surface2: #151620;
+  --border:   rgba(255,255,255,0.07);
+  --lime:     #C8FF57;
+  --lime-dim: rgba(200,255,87,0.07);
+  --lime-b:   rgba(200,255,87,0.18);
+  --red:      #FF4D4D;
+  --text:     #F0F4FF;
+  --text2:    #8290A4;
+  --text3:    #5A6A80;
   scroll-behavior: smooth;
 }
 
-*, *::before, *::after { box-sizing: border-box; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; }
 
 body, .stApp, .main, [data-testid="stAppViewContainer"] {
-  font-family: 'DM Sans', -apple-system, sans-serif !important;
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif !important;
   background: var(--bg) !important;
-  color: var(--text-1) !important;
+  color: var(--text) !important;
 }
 
 #MainMenu, header[data-testid="stHeader"], footer,
 .stDeployButton, [data-testid="collapsedControl"],
 section[data-testid="stSidebar"] { display: none !important; }
 
-.block-container,
-[data-testid="stMainBlockContainer"] {
-  padding: 0 !important;
-  max-width: 100% !important;
+.block-container, [data-testid="stMainBlockContainer"] {
+  padding: 0 !important; max-width: 100% !important;
 }
 
-/* ── Navbar ── */
+/* ────────────────── NAVBAR ────────────────── */
 .ml-nav {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 0 80px; height: 72px;
-  background: rgba(8,13,24,0.85);
-  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  padding: 0 7vw; height: 68px;
+  background: rgba(7,8,13,0.94);
+  backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
   border-bottom: 1px solid var(--border);
   position: sticky; top: 0; z-index: 1000;
 }
 .ml-logo {
   display: flex; align-items: center; gap: 10px;
-  font-family: 'Syne', sans-serif; font-weight: 800;
-  font-size: 18px; color: var(--text-1); text-decoration: none;
+  text-decoration: none !important; flex-shrink: 0;
 }
-.ml-logo-icon {
-  width: 34px; height: 34px;
-  background: linear-gradient(135deg, #00D4B8 0%, #00A896 100%);
-  border-radius: 9px; flex-shrink: 0;
-  box-shadow: 0 0 16px rgba(0,212,184,0.35);
+.ml-logo:hover { text-decoration: none !important; }
+.ml-logo * { text-decoration: none !important; }
+.ml-logo-mark {
+  width: 34px; height: 34px; border-radius: 9px;
+  background: var(--lime); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 0 1px rgba(200,255,87,0.35), inset 0 1px 0 rgba(255,255,255,0.25);
 }
-.ml-nav-links { display: flex; align-items: center; gap: 32px; }
+.ml-logo-mark svg { width: 20px; height: 20px; }
+.ml-logo-wordmark {
+  display: flex; align-items: baseline; gap: 0;
+  line-height: 1;
+}
+.ml-logo-med {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-style: italic; font-weight: 700;
+  font-size: 20px; color: var(--text);
+  letter-spacing: -.3px;
+}
+.ml-logo-label {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 500; font-size: 15px;
+  color: var(--text2); letter-spacing: .3px;
+}
+.ml-nav-links { display: flex; align-items: center; gap: 28px; }
 .ml-nav-links a {
-  color: var(--text-2); text-decoration: none;
-  font-size: 14px; font-weight: 500;
-  transition: color .2s;
+  color: var(--text2); text-decoration: none;
+  font-size: 13.5px; font-weight: 500;
+  letter-spacing: .1px;
+  transition: color .18s;
 }
-.ml-nav-links a:hover { color: var(--accent); }
+.ml-nav-links a:hover { color: var(--text); }
 
-/* ── Hero ── */
+/* ────────────────── HERO ────────────────── */
 .ml-hero-wrap {
   position: relative; overflow: hidden;
   background: var(--bg);
-  padding: 110px 20px 100px;
-  text-align: center;
+  padding: 100px 7vw 0;
 }
-.ml-hero-wrap::before {
-  content: '';
-  position: absolute; inset: 0;
-  background:
-    radial-gradient(ellipse 700px 500px at 20% 50%, rgba(0,212,184,0.09) 0%, transparent 70%),
-    radial-gradient(ellipse 600px 400px at 80% 60%, rgba(99,102,241,0.07) 0%, transparent 70%);
-  animation: orb-drift 14s ease-in-out infinite alternate;
-  pointer-events: none;
+.ml-hero-noise {
+  position: absolute; inset: 0; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  background-size: 200px 200px; opacity: .5;
 }
-@keyframes orb-drift {
-  from { transform: scale(1) translateY(0px); }
-  to   { transform: scale(1.07) translateY(-18px); }
+.ml-hero-glow {
+  position: absolute; pointer-events: none;
+  width: 600px; height: 600px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(200,255,87,0.06) 0%, transparent 70%);
+  top: -100px; left: -100px;
+  animation: glow-drift 12s ease-in-out infinite alternate;
 }
-.ml-hero-inner { position: relative; z-index: 1; }
-.ml-badge {
+@keyframes glow-drift {
+  from { transform: translate(0,0) scale(1); }
+  to   { transform: translate(120px, 60px) scale(1.15); }
+}
+.ml-hero-inner { position: relative; z-index: 1; max-width: 900px; }
+.ml-eyebrow {
   display: inline-flex; align-items: center; gap: 8px;
-  background: rgba(0,212,184,0.09); border: 1px solid rgba(0,212,184,0.22);
-  border-radius: 999px; padding: 6px 16px;
-  font-size: 12px; font-weight: 600; letter-spacing: .8px;
-  color: var(--accent); text-transform: uppercase; margin-bottom: 32px;
+  font-family: 'Space Mono', monospace; font-size: 11px; font-weight: 400;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--lime); margin-bottom: 28px;
 }
-.ml-badge-dot {
-  width: 7px; height: 7px; background: var(--accent);
-  border-radius: 50%; display: inline-block;
-  animation: pulse-dot 2.2s ease-in-out infinite;
-}
-@keyframes pulse-dot {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50%       { opacity: 0.45; transform: scale(0.65); }
+.ml-eyebrow-line {
+  display: inline-block; width: 28px; height: 1px;
+  background: var(--lime); opacity: .7;
 }
 .ml-hero h1 {
-  font-family: 'Syne', sans-serif;
-  font-size: clamp(38px, 5.5vw, 68px); font-weight: 800;
-  color: var(--text-1); line-height: 1.07;
-  max-width: 860px; margin: 0 auto 24px;
-  letter-spacing: -.5px;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-style: italic; font-weight: 700;
+  font-size: clamp(52px, 7.5vw, 100px);
+  color: var(--text); line-height: 1.02;
+  letter-spacing: -1px; margin-bottom: 32px;
 }
-.ml-hero h1 .hl {
-  background: linear-gradient(90deg, #00D4B8 0%, #6366F1 100%);
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  background-clip: text;
+.ml-hero h1 em {
+  font-style: normal;
+  color: var(--lime);
 }
 .ml-hero-sub {
-  font-size: 18px; color: var(--text-2); max-width: 520px;
-  margin: 0 auto 52px; line-height: 1.7;
+  font-size: clamp(15px, 1.6vw, 18px);
+  color: var(--text2); max-width: 480px;
+  line-height: 1.75; margin-bottom: 52px;
+  font-weight: 300;
+}
+.ml-hero-divider {
+  width: 100%; height: 1px;
+  background: linear-gradient(90deg, var(--lime-b) 0%, transparent 60%);
+  margin-bottom: 0; margin-top: 56px;
 }
 
-/* see-how anchor button */
+/* ────────────────── CTA BUTTONS (host Streamlit) ────────────────── */
+.ml-cta-wrap {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 0;
+}
 .see-how-btn {
-  display: flex; align-items: center; justify-content: center;
-  width: 100%; padding: 12px 20px; border-radius: 12px;
-  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
-  color: #E8EEFF !important; font-family: 'DM Sans', sans-serif;
-  font-size: 15px; font-weight: 600; text-decoration: none !important;
-  transition: border-color .2s, color .2s, background .2s;
-  cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 13px 28px; border-radius: 10px;
+  border: 1px solid var(--border);
+  color: var(--text2) !important; font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px; font-weight: 500; text-decoration: none !important;
+  transition: border-color .2s, color .2s;
+  white-space: nowrap;
 }
-.see-how-btn:hover {
-  border-color: rgba(0,212,184,0.5); color: #00D4B8 !important;
-  background: rgba(0,212,184,0.06);
+.see-how-btn:hover { border-color: rgba(255,255,255,0.2); color: var(--text) !important; }
+
+/* ────────────────── STATS BAR ────────────────── */
+.ml-stats {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.ml-stat {
+  padding: 28px 7vw;
+  border-right: 1px solid var(--border);
+}
+.ml-stat:last-child { border-right: none; }
+.ml-stat-num {
+  font-family: 'Space Mono', monospace;
+  font-size: clamp(22px, 2.5vw, 30px); font-weight: 700;
+  color: var(--lime); letter-spacing: -1px;
+  line-height: 1.1; margin-bottom: 4px;
+}
+.ml-stat-label {
+  font-size: 12px; color: var(--text3);
+  font-weight: 500; letter-spacing: .3px;
+  text-transform: uppercase;
 }
 
-/* ── Trust strip ── */
-.ml-trust-strip {
-  display: flex; justify-content: center; align-items: center;
-  flex-wrap: wrap; gap: 32px;
-  padding: 20px 80px;
-  border-top: 1px solid rgba(255,255,255,0.06);
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-  background: rgba(255,255,255,0.015);
+/* ────────────────── FEATURES ────────────────── */
+.ml-features {
+  padding: 100px 7vw;
+  background: var(--bg);
 }
-.ml-trust-item {
-  display: flex; align-items: center; gap: 7px;
-  font-size: 13px; color: var(--text-3); font-weight: 500;
+.ml-section-tag {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--text3); margin-bottom: 16px;
 }
-
-/* ── Features ── */
-.ml-features { padding: 96px 80px; background: var(--bg); }
-.ml-features-eyebrow {
-  text-align: center; font-size: 12px; font-weight: 600;
-  letter-spacing: 1.2px; text-transform: uppercase;
-  color: var(--accent); margin-bottom: 14px;
-}
+.ml-section-tag::before { content: '// '; color: var(--lime); }
 .ml-features-title {
-  text-align: center;
-  font-family: 'Syne', sans-serif;
-  font-size: clamp(28px, 3.5vw, 42px); font-weight: 800;
-  color: var(--text-1); margin-bottom: 64px; letter-spacing: -.3px;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-weight: 700; font-style: italic;
+  font-size: clamp(32px, 4vw, 52px);
+  color: var(--text); margin-bottom: 64px; line-height: 1.1;
+  max-width: 480px;
 }
 .ml-cards {
   display: grid; grid-template-columns: repeat(3, 1fr);
-  gap: 24px; max-width: 1100px; margin: 0 auto;
+  gap: 1px; background: var(--border);
+  border: 1px solid var(--border); border-radius: 16px; overflow: hidden;
 }
 @media (max-width: 900px) { .ml-cards { grid-template-columns: 1fr; } }
 .ml-card {
-  background: rgba(255,255,255,0.04);
-  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 20px; padding: 36px 32px;
-  transition: transform .25s, box-shadow .25s, border-color .25s, background .25s;
+  background: var(--surface);
+  padding: 40px 36px 44px;
+  transition: background .2s;
+  position: relative;
 }
-.ml-card:hover {
-  transform: translateY(-5px);
-  border-color: rgba(0,212,184,0.28);
-  background: rgba(255,255,255,0.07);
-  box-shadow: 0 12px 48px rgba(0,212,184,0.07);
+.ml-card::before {
+  content: ''; position: absolute;
+  top: 0; left: 0; right: 0; height: 2px;
+  background: transparent;
+  transition: background .2s;
 }
-.ml-card-icon {
-  width: 56px; height: 56px;
-  background: rgba(0,212,184,0.1); border-radius: 16px;
-  margin-bottom: 24px;
-  display: flex; align-items: center; justify-content: center;
+.ml-card:hover { background: var(--surface2); }
+.ml-card:hover::before { background: var(--lime); }
+.ml-card-num {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px; color: var(--lime); letter-spacing: 1px;
+  margin-bottom: 20px; opacity: .7;
 }
-.ml-card-icon svg { width: 26px; height: 26px; }
 .ml-card h3 {
-  font-family: 'Syne', sans-serif;
-  font-size: 18px; font-weight: 700; color: #E8EEFF; margin-bottom: 12px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 17px; font-weight: 600; color: var(--text);
+  margin-bottom: 12px; letter-spacing: -.2px;
 }
-.ml-card p { font-size: 14px; color: #8892A4; line-height: 1.7; }
+.ml-card p { font-size: 14px; color: var(--text2); line-height: 1.75; }
+.ml-card-icon-row {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 24px;
+}
+.ml-card-icon-box {
+  width: 40px; height: 40px; border-radius: 10px;
+  background: var(--lime-dim);
+  border: 1px solid var(--lime-b);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.ml-card-icon-box svg { width: 20px; height: 20px; }
 
-/* ── How it works ── */
+/* ────────────────── HOW IT WORKS ────────────────── */
 .ml-how {
-  padding: 96px 80px;
-  background: linear-gradient(180deg, #080D18 0%, #0A1120 100%);
-  border-top: 1px solid rgba(255,255,255,0.06);
-}
-.ml-how-eyebrow {
-  text-align: center; font-size: 12px; font-weight: 600;
-  letter-spacing: 1.2px; text-transform: uppercase;
-  color: #6366F1; margin-bottom: 14px;
+  padding: 100px 7vw;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
 }
 .ml-how-title {
-  text-align: center;
-  font-family: 'Syne', sans-serif;
-  font-size: clamp(28px, 3.5vw, 42px); font-weight: 800;
-  color: #E8EEFF; margin-bottom: 64px; letter-spacing: -.3px;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-weight: 700; font-style: italic;
+  font-size: clamp(32px, 4vw, 52px);
+  color: var(--text); margin-bottom: 64px; line-height: 1.1;
+  max-width: 400px;
 }
 .ml-steps {
   display: grid; grid-template-columns: repeat(3, 1fr);
-  gap: 0; max-width: 860px; margin: 0 auto; position: relative;
+  gap: 0; position: relative;
 }
 .ml-steps::before {
   content: ''; position: absolute;
-  top: 27px; left: calc(16.66% + 28px); right: calc(16.66% + 28px);
-  height: 1px;
-  background: linear-gradient(90deg, rgba(0,212,184,0.4) 0%, rgba(99,102,241,0.4) 100%);
+  top: 20px; left: 10%; right: 10%; height: 1px;
+  background: var(--border);
 }
-.ml-step {
-  display: flex; flex-direction: column; align-items: center;
-  text-align: center; padding: 0 28px;
-}
+.ml-step { padding-right: 48px; }
 .ml-step-num {
-  width: 54px; height: 54px; border-radius: 50%;
-  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.10);
-  display: flex; align-items: center; justify-content: center;
-  font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 800;
-  color: #00D4B8; margin-bottom: 22px;
-  position: relative; z-index: 1;
+  font-family: 'Space Mono', monospace;
+  font-size: 11px; color: var(--lime); letter-spacing: 1px;
+  margin-bottom: 32px; display: flex; align-items: center; gap: 12px;
+}
+.ml-step-num::after {
+  content: ''; flex: 1; height: 1px;
+  background: var(--lime); max-width: 40px; opacity: .3;
 }
 .ml-step h4 {
-  font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700;
-  color: #E8EEFF; margin-bottom: 8px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 17px; font-weight: 600; color: var(--text);
+  margin-bottom: 10px; letter-spacing: -.2px;
 }
-.ml-step p { font-size: 13px; color: #8892A4; line-height: 1.65; }
+.ml-step p { font-size: 14px; color: var(--text2); line-height: 1.75; }
 
-/* ── Bottom CTA section ── */
+/* ────────────────── BOTTOM CTA ────────────────── */
 .ml-cta-section {
-  text-align: center; padding: 88px 20px;
+  padding: 120px 7vw 100px;
   background: var(--bg);
-  border-top: 1px solid rgba(255,255,255,0.06);
+  display: flex; flex-direction: column;
+  align-items: center; text-align: center;
+  border-top: 1px solid var(--border);
 }
 .ml-cta-section h2 {
-  font-family: 'Syne', sans-serif;
-  font-size: clamp(26px, 3.5vw, 40px); font-weight: 800;
-  color: #E8EEFF; margin-bottom: 12px; letter-spacing: -.3px;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-weight: 700; font-style: italic;
+  font-size: clamp(42px, 6vw, 80px);
+  color: var(--text); line-height: 1.02; margin-bottom: 16px;
+  max-width: 800px;
 }
-.ml-cta-section p {
-  color: #8892A4; font-size: 16px; margin-bottom: 40px;
-}
+.ml-cta-section p { color: var(--text2); font-size: 15px; margin-bottom: 40px; font-weight: 300; }
 
-/* ── Footer ── */
+/* ────────────────── FOOTER ────────────────── */
 .ml-footer {
-  padding: 40px 80px; border-top: 1px solid rgba(255,255,255,0.06);
-  text-align: center; color: #4B5A6E; font-size: 13px;
-  background: #080D18;
+  padding: 32px 7vw;
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 12px;
+  background: var(--surface);
 }
-.ml-footer a { color: #8892A4 !important; text-decoration: none; }
-.ml-footer a:hover { color: #00D4B8 !important; }
+.ml-footer-left { font-size: 13px; color: var(--text3); }
+.ml-footer-right { font-size: 12px; color: var(--text3); font-style: italic; }
+.ml-footer a { color: var(--text2) !important; text-decoration: none !important; }
+.ml-footer a:hover { color: var(--text) !important; text-decoration: none !important; }
+.ml-nav-links a { text-decoration: none !important; }
+.see-how-btn { text-decoration: none !important; }
 
-/* ── Scanner page ── */
-.ml-scanner { max-width: 1320px; margin: 0 auto; padding: 40px 56px; }
-.ml-scanner-header { margin-bottom: 36px; }
+/* ────────────────── SCANNER ────────────────── */
+.ml-scanner { max-width: 1400px; margin: 0 auto; padding: 40px 7vw 60px; }
+.ml-scanner-header { margin-bottom: 40px; }
 .ml-scanner-title {
-  font-family: 'Syne', sans-serif;
-  font-size: 28px; font-weight: 800; color: #E8EEFF; margin-bottom: 6px;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-style: italic; font-weight: 700;
+  font-size: clamp(28px, 3vw, 42px); color: var(--text);
+  margin-bottom: 6px; line-height: 1.1;
 }
-.ml-scanner-desc { font-size: 15px; color: #8892A4; }
+.ml-scanner-desc { font-size: 14px; color: var(--text2); font-weight: 300; }
 .ml-label {
-  font-size: 11px; font-weight: 600; color: #4B5A6E;
-  letter-spacing: .9px; text-transform: uppercase; margin-bottom: 10px;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px; color: var(--text3); letter-spacing: 1.5px;
+  text-transform: uppercase; margin-bottom: 10px;
 }
 
-/* ── Streamlit widget overrides ── */
-.stButton > button {
-  background: linear-gradient(135deg, #00D4B8 0%, #00A896 100%) !important;
-  color: #080D18 !important;
-  border: none !important; border-radius: 12px !important;
-  font-family: 'DM Sans', sans-serif !important;
-  font-weight: 600 !important; font-size: 15px !important;
-  transition: all .2s ease !important;
+/* ────────────────── STREAMLIT WIDGETS ────────────────── */
+/* Primary buttons — layout on the button element only */
+.stButton > button,
+[data-testid="stBaseButton-primary"] {
+  background: var(--lime) !important;
+  color: #07080D !important;
+  border: none !important; border-radius: 10px !important;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  font-weight: 600 !important; font-size: 14px !important;
+  letter-spacing: -.1px !important;
+  transition: opacity .18s, transform .18s !important;
+  padding: 0 24px !important; height: 46px !important;
+  white-space: nowrap !important;
 }
-.stButton > button:hover {
-  transform: translateY(-2px) !important;
-  box-shadow: 0 6px 28px rgba(0,212,184,0.28) !important;
+/* Force dark text on every child node — color only, no layout */
+.stButton > button *,
+[data-testid="stBaseButton-primary"] * {
+  color: #07080D !important;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  font-size: 14px !important; font-weight: 600 !important;
 }
-.stButton > button[kind="secondary"] {
-  background: rgba(255,255,255,0.04) !important;
-  color: #E8EEFF !important;
-  border: 1px solid rgba(255,255,255,0.08) !important;
-  box-shadow: none !important;
+.stButton > button:hover,
+[data-testid="stBaseButton-primary"]:hover {
+  opacity: .88 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 24px rgba(200,255,87,0.22) !important;
 }
-.stButton > button[kind="secondary"]:hover {
-  border-color: rgba(0,212,184,0.4) !important;
-  color: #00D4B8 !important;
-  background: rgba(0,212,184,0.05) !important;
+/* Secondary / ghost buttons */
+.stButton > button[kind="secondary"],
+[data-testid="stBaseButton-secondary"] {
+  background: transparent !important;
+  color: var(--text2) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: none !important; height: 46px !important;
+  white-space: nowrap !important;
+}
+.stButton > button[kind="secondary"] *,
+[data-testid="stBaseButton-secondary"] * { color: var(--text2) !important; }
+.stButton > button[kind="secondary"]:hover,
+[data-testid="stBaseButton-secondary"]:hover {
+  border-color: rgba(255,255,255,0.2) !important;
+  color: var(--text) !important;
+  background: rgba(255,255,255,0.03) !important;
+  transform: none !important; box-shadow: none !important;
+}
+/* Back button */
+.back-btn button {
+  background: transparent !important;
+  color: var(--text2) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: none !important; white-space: nowrap !important;
+  font-size: 13px !important; font-weight: 500 !important;
+  padding: 0 16px !important; height: 36px !important; border-radius: 8px !important;
   transform: none !important;
 }
-.back-btn button {
-  background: transparent !important; color: #00D4B8 !important;
-  border: none !important; box-shadow: none !important;
-  font-size: 14px !important; padding: 0 !important;
-  font-weight: 500 !important; transform: none !important;
-}
-.back-btn button:hover { opacity: 0.75 !important; }
+.back-btn button * { color: var(--text2) !important; }
+.back-btn button:hover { color: var(--text) !important; border-color: rgba(255,255,255,0.2) !important; background: rgba(255,255,255,0.04) !important; }
+.back-btn button:hover * { color: var(--text) !important; }
 
 [data-testid="stFileUploaderDropzone"] {
-  border: 1.5px dashed rgba(0,212,184,0.35) !important;
-  border-radius: 16px !important;
-  background: rgba(0,212,184,0.025) !important;
+  border: 1px dashed rgba(255,255,255,0.12) !important;
+  border-radius: 12px !important;
+  background: var(--surface) !important;
+  transition: border-color .2s, background .2s;
 }
 [data-testid="stFileUploaderDropzone"]:hover {
-  border-color: #00D4B8 !important;
-  background: rgba(0,212,184,0.055) !important;
+  border-color: var(--lime-b) !important;
+  background: var(--lime-dim) !important;
 }
 
 .stTabs [data-baseweb="tab-list"] {
   gap: 0; background: transparent;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  border-bottom: 1px solid var(--border);
 }
 .stTabs [data-baseweb="tab"] {
-  font-family: 'DM Sans', sans-serif !important;
-  font-weight: 600 !important; color: #8892A4 !important;
-  background: transparent; border: none; padding: 10px 22px;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  font-weight: 500 !important; font-size: 13px !important;
+  color: var(--text2) !important;
+  background: transparent; border: none; padding: 10px 20px;
+  letter-spacing: .1px;
 }
 .stTabs [aria-selected="true"] {
-  color: #00D4B8 !important;
-  border-bottom: 2px solid #00D4B8 !important;
+  color: var(--text) !important;
+  border-bottom: 2px solid var(--lime) !important;
 }
 
 [data-testid="stMetric"] {
-  background: rgba(255,255,255,0.04) !important;
-  backdrop-filter: blur(12px);
-  border-radius: 14px; padding: 18px 22px;
-  border: 1px solid rgba(255,255,255,0.08) !important;
+  background: var(--surface) !important;
+  border-radius: 12px; padding: 20px 22px;
+  border: 1px solid var(--border) !important;
 }
 [data-testid="stMetric"] label {
-  color: #8892A4 !important; font-family: 'DM Sans', sans-serif !important;
+  color: var(--text2) !important;
+  font-family: 'Space Mono', monospace !important;
+  font-size: 10px !important; letter-spacing: 1px;
 }
 [data-testid="stMetric"] [data-testid="stMetricValue"] {
-  color: #E8EEFF !important; font-family: 'Syne', sans-serif !important;
-  font-weight: 700 !important;
+  color: var(--text) !important;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  font-weight: 700 !important; font-size: 22px !important;
 }
 
-.stTextArea textarea,
-[data-testid="stChatInput"] textarea {
-  background: rgba(255,255,255,0.04) !important;
-  border: 1px solid rgba(255,255,255,0.08) !important;
-  border-radius: 14px !important;
-  color: #E8EEFF !important;
-  font-family: 'DM Sans', sans-serif !important;
+.stTextArea textarea, [data-testid="stChatInput"] textarea {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 12px !important; color: var(--text) !important;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
 }
-.stTextArea textarea:focus,
-[data-testid="stChatInput"] textarea:focus {
-  border-color: #00D4B8 !important;
-  box-shadow: 0 0 0 2px rgba(0,212,184,0.15) !important;
+.stTextArea textarea:focus, [data-testid="stChatInput"] textarea:focus {
+  border-color: var(--lime-b) !important;
+  box-shadow: 0 0 0 2px rgba(200,255,87,0.1) !important;
 }
 
 .stRadio label, .stRadio p {
-  font-family: 'DM Sans', sans-serif !important;
-  color: #8892A4 !important;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  color: var(--text2) !important;
 }
 div[data-baseweb="radio"] > label > div:first-child > div {
-  border-color: #00D4B8 !important;
+  border-color: var(--lime) !important;
 }
 div[data-baseweb="radio"] > label {
-  background: rgba(255,255,255,0.03) !important;
-  border: 1px solid rgba(255,255,255,0.07) !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
   border-radius: 10px !important;
-  padding: 10px 14px !important;
-  margin-bottom: 6px !important;
+  padding: 10px 14px !important; margin-bottom: 6px !important;
   transition: border-color .2s, background .2s;
 }
 div[data-baseweb="radio"] > label:hover {
-  border-color: rgba(0,212,184,0.3) !important;
-  background: rgba(0,212,184,0.04) !important;
+  border-color: var(--lime-b) !important;
+  background: var(--lime-dim) !important;
 }
 
 .stAlert, .element-container .stSuccess,
 .element-container .stInfo,
 .element-container .stWarning,
 .element-container .stError {
-  border-radius: 14px !important;
-  font-family: 'DM Sans', sans-serif !important;
+  border-radius: 12px !important;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
 }
 .stSpinner p {
-  font-family: 'DM Sans', sans-serif !important;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
   color: #8892A4 !important;
 }
 .stExpander {
@@ -759,9 +839,149 @@ div[data-baseweb="radio"] > label:hover {
 }
 .stCaption p, small {
   color: #4B5A6E !important;
-  font-family: 'DM Sans', sans-serif !important;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
 }
 div[data-testid="stDivider"] { border-color: rgba(255,255,255,0.07) !important; }
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: rgba(200,255,87,0.2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(200,255,87,0.4); }
+
+/* ── Dark theme: patch all remaining Streamlit light-bg leaks ── */
+
+/* Root containers */
+[data-testid="stAppViewContainer"],
+[data-testid="stApp"],
+.stApp, .main {
+  background-color: #07080D !important;
+}
+
+/* Block container — Streamlit adds its own padding/bg */
+[data-testid="stMainBlockContainer"],
+[data-testid="block-container"],
+.block-container {
+  background: transparent !important;
+  padding: 0 !important;
+  max-width: 100% !important;
+}
+
+/* Every st.write / st.markdown paragraph — exclude button internals */
+[data-testid="stMarkdownContainer"] p:not(.stButton p),
+[data-testid="stMarkdownContainer"] li,
+[data-testid="stMarkdownContainer"] h1,
+[data-testid="stMarkdownContainer"] h2,
+[data-testid="stMarkdownContainer"] h3,
+[data-testid="stMarkdownContainer"] h4,
+[data-testid="stMarkdownContainer"] code,
+.stMarkdown p, .stMarkdown li {
+  color: #F0F4FF !important;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+}
+/* Re-assert dark text inside primary buttons after any p override */
+.stButton > button p,
+[data-testid="stBaseButton-primary"] p { color: #07080D !important; }
+
+/* st.write plain text */
+[data-testid="stText"] {
+  color: #F0F4FF !important;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+}
+
+/* Widget labels */
+label, .stSelectbox label, .stRadio label,
+[data-testid="stWidgetLabel"] p,
+[data-baseweb="label"] {
+  color: #8892A4 !important;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+}
+
+/* st.info / st.success / st.warning / st.error */
+[data-testid="stNotification"],
+[data-testid="stAlert"] {
+  background: #0E0F16 !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  color: #F0F4FF !important;
+}
+[data-testid="stAlert"] p { color: #F0F4FF !important; }
+
+/* st.caption */
+[data-testid="stCaptionContainer"] p,
+.stCaption, .stCaption p {
+  color: #4B5A6E !important;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+}
+
+/* Text area */
+.stTextArea label { color: #8892A4 !important; }
+.stTextArea textarea {
+  background: #0E0F16 !important;
+  color: #F0F4FF !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+}
+
+/* File uploader label text */
+[data-testid="stFileUploaderDropzoneInstructions"] p,
+[data-testid="stFileUploaderDropzoneInstructions"] small,
+[data-testid="stFileUploadDropzone"] p {
+  color: #8892A4 !important;
+}
+
+/* Expander header */
+[data-testid="stExpanderToggleIcon"],
+[data-testid="stExpanderDetails"],
+details summary p,
+.stExpander details summary span {
+  color: #F0F4FF !important;
+}
+
+/* Tabs */
+.stTabs [data-baseweb="tab-panel"] {
+  background: transparent !important;
+  padding-top: 20px;
+}
+
+/* Chat input area */
+[data-testid="stChatInputContainer"] {
+  background: #07080D !important;
+  border-top: 1px solid rgba(255,255,255,0.06) !important;
+}
+[data-testid="stChatInput"] {
+  background: #0E0F16 !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  border-radius: 14px !important;
+}
+
+/* Chat message avatars and text */
+[data-testid="stChatMessage"] p { color: #F0F4FF !important; }
+
+/* Metric delta */
+[data-testid="stMetricDelta"] svg { stroke: var(--lime) !important; }
+
+/* st.divider */
+hr { border-color: rgba(255,255,255,0.07) !important; }
+
+/* Spinner text */
+[data-testid="stSpinner"] p { color: #8892A4 !important; }
+
+/* Selectbox / dropdown */
+[data-baseweb="select"] > div {
+  background: #0E0F16 !important;
+  border-color: rgba(255,255,255,0.08) !important;
+  color: #F0F4FF !important;
+}
+[data-baseweb="popover"] ul {
+  background: #0E0F16 !important;
+  color: #F0F4FF !important;
+}
+
+/* Code blocks */
+code, pre {
+  background: var(--surface) !important;
+  color: var(--lime) !important;
+  border-radius: 6px;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -777,28 +997,61 @@ if not _show_scanner:
     st.markdown("""
 <nav class="ml-nav">
   <a class="ml-logo" href="#">
-    <div class="ml-logo-icon"></div>
-    MedLabel
+    <div class="ml-logo-mark">
+      <svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+        <rect x="7.5" y="1.5" width="5" height="17" rx="2.5" fill="#07080D"/>
+        <rect x="1.5" y="7.5" width="17" height="5" rx="2.5" fill="#07080D"/>
+      </svg>
+    </div>
+    <div class="ml-logo-wordmark">
+      <span class="ml-logo-med">Med</span><span class="ml-logo-label">Label</span>
+    </div>
   </a>
   <div class="ml-nav-links">
-    <a href="#ml-features">Features</a>
-    <a href="#ml-how">How it works</a>
-    <a href="#ml-safety">Safety</a>
+    <a href="#" data-scrollto="ml-features">Features</a>
+    <a href="#" data-scrollto="ml-how">How it works</a>
+    <a href="#" data-scrollto="ml-safety">Safety</a>
   </div>
 </nav>""", unsafe_allow_html=True)
 
+    components.html("""<script>
+(function(){
+  function wire(){
+    var doc=parent.document;
+    doc.querySelectorAll('a[data-scrollto]').forEach(function(a){
+      if(a._wired) return;
+      a._wired=true;
+      a.addEventListener('click',function(e){
+        e.preventDefault();
+        var id=a.getAttribute('data-scrollto');
+        var el=doc.getElementById(id);
+        if(el) el.scrollIntoView({behavior:'smooth',block:'start'});
+      });
+    });
+  }
+  setTimeout(wire,600);
+  setTimeout(wire,1500);
+})();
+</script>""", height=0)
+
     st.markdown("""
 <div class="ml-hero-wrap">
+  <div class="ml-hero-noise"></div>
+  <div class="ml-hero-glow"></div>
   <div class="ml-hero-inner">
-    <div class="ml-badge"><span class="ml-badge-dot"></span>FDA-Grounded &nbsp;·&nbsp; Free &nbsp;·&nbsp; Private</div>
+    <div class="ml-eyebrow">
+      <span class="ml-eyebrow-line"></span>
+      FDA-grounded &nbsp;·&nbsp; free &nbsp;·&nbsp; private
+    </div>
     <div class="ml-hero">
-      <h1>Read any medicine label<br><span class="hl">in plain English</span></h1>
+      <h1>Read any medicine label<br><em>in plain English</em></h1>
       <p class="ml-hero-sub">
         Point your phone at any pill bottle, box, or blister pack. MedLabel reads it,
         explains it clearly, and answers your questions — grounded in official FDA data.
       </p>
     </div>
   </div>
+  <div class="ml-hero-divider"></div>
 </div>""", unsafe_allow_html=True)
 
     _, c1, c2, _ = st.columns([2, 1.2, 1.2, 2])
@@ -811,55 +1064,69 @@ if not _show_scanner:
                     unsafe_allow_html=True)
 
     st.markdown("""
-<div class="ml-trust-strip">
-  <div class="ml-trust-item">
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#00D4B8" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-    5,976 FDA label chunks
+<div class="ml-stats">
+  <div class="ml-stat">
+    <div class="ml-stat-num">5,976</div>
+    <div class="ml-stat-label">FDA label chunks</div>
   </div>
-  <div class="ml-trust-item">
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#00D4B8" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-    YOLO + OCR pipeline
+  <div class="ml-stat">
+    <div class="ml-stat-num">3-in-1</div>
+    <div class="ml-stat-label">OCR + Vision + YOLO</div>
   </div>
-  <div class="ml-trust-item">
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#00D4B8" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-    Grok &amp; Gemini AI
+  <div class="ml-stat">
+    <div class="ml-stat-num">Grok</div>
+    <div class="ml-stat-label">xAI language model</div>
   </div>
-  <div class="ml-trust-item">
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#00D4B8" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-    No data stored
+  <div class="ml-stat">
+    <div class="ml-stat-num">0 kb</div>
+    <div class="ml-stat-label">Data stored about you</div>
   </div>
 </div>
 
 <section class="ml-features" id="ml-features">
-  <div class="ml-features-eyebrow">Capabilities</div>
-  <div class="ml-features-title">Built for trust and clarity</div>
+  <div class="ml-section-tag">Capabilities</div>
+  <div class="ml-features-title">Built for trust<br>and clarity</div>
   <div class="ml-cards">
     <div class="ml-card">
-      <div class="ml-card-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#00D4B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="11" cy="11" r="8"/>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          <line x1="8" y1="11" x2="14" y2="11"/>
-          <line x1="11" y1="8" x2="11" y2="14"/>
-        </svg>
+      <div class="ml-card-num">01</div>
+      <div class="ml-card-icon-row">
+        <div class="ml-card-icon-box">
+          <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M6 14V8a2 2 0 0 1 2-2h6" stroke="#C8FF57" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M34 14V8a2 2 0 0 0-2-2h-6" stroke="#C8FF57" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M6 26v6a2 2 0 0 0 2 2h6" stroke="#C8FF57" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M34 26v6a2 2 0 0 1-2 2h-6" stroke="#C8FF57" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <line x1="6" y1="20" x2="34" y2="20" stroke="#C8FF57" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="3 2"/>
+            <circle cx="20" cy="20" r="2.5" fill="#C8FF57"/>
+          </svg>
+        </div>
       </div>
       <h3>Smart scanning</h3>
       <p>YOLO geometry detection routes each photo to the right pipeline — PaddleOCR for flat labels, Vision AI for curved bottles.</p>
     </div>
     <div class="ml-card">
-      <div class="ml-card-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#00D4B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-        </svg>
+      <div class="ml-card-num">02</div>
+      <div class="ml-card-icon-row">
+        <div class="ml-card-icon-box">
+          <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M8 10a3 3 0 0 1 3-3h18a3 3 0 0 1 3 3v13a3 3 0 0 1-3 3H22l-5 5v-5H11a3 3 0 0 1-3-3V10Z" stroke="#C8FF57" stroke-width="2" stroke-linejoin="round"/>
+            <line x1="13" y1="15" x2="27" y2="15" stroke="#C8FF57" stroke-width="1.8" stroke-linecap="round"/>
+            <line x1="13" y1="20" x2="23" y2="20" stroke="#C8FF57" stroke-width="1.8" stroke-linecap="round" opacity="0.6"/>
+          </svg>
+        </div>
       </div>
       <h3>Plain-English answers</h3>
       <p>Medical jargon simplified to a 5th-grade reading level. Ask anything — side effects, dosage, interactions — in natural language.</p>
     </div>
     <div class="ml-card">
-      <div class="ml-card-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#00D4B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-        </svg>
+      <div class="ml-card-num">03</div>
+      <div class="ml-card-icon-row">
+        <div class="ml-card-icon-box">
+          <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M20 4L8 9v10c0 7.18 5.12 13.9 12 15.5C27.88 32.9 33 26.18 33 19V9L20 4Z" stroke="#C8FF57" stroke-width="2" stroke-linejoin="round"/>
+            <path d="M14 20l4 4 8-8" stroke="#C8FF57" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
       </div>
       <h3>Grounded in FDA data</h3>
       <p>Every answer is retrieved from 5,976 chunks of official FDA drug labels — never hallucinated, always cited.</p>
@@ -868,8 +1135,8 @@ if not _show_scanner:
 </section>
 
 <section class="ml-how" id="ml-how">
-  <div class="ml-how-eyebrow">Process</div>
-  <div class="ml-how-title">Three steps to clarity</div>
+  <div class="ml-section-tag">Process</div>
+  <div class="ml-how-title">Three steps<br>to clarity</div>
   <div class="ml-steps">
     <div class="ml-step">
       <div class="ml-step-num">01</div>
@@ -891,7 +1158,7 @@ if not _show_scanner:
 
     st.markdown("""
 <div class="ml-cta-section">
-  <h2>Ready to scan your first label?</h2>
+  <h2>Ready to scan<br>your first label?</h2>
   <p>Takes under 10 seconds. No account needed.</p>
 </div>""", unsafe_allow_html=True)
 
@@ -903,8 +1170,8 @@ if not _show_scanner:
 
     st.markdown("""
 <footer class="ml-footer" id="ml-safety">
-  <p>&#169; 2026 MedLabel &nbsp;&middot;&nbsp; <a href="#">Privacy</a> &nbsp;&middot;&nbsp; <a href="#">Terms</a></p>
-  <p style="margin-top:8px;font-size:12px;">An informational tool only &#8212; not a substitute for professional medical advice. Always verify with your pharmacist.</p>
+  <div class="ml-footer-left">&#169; 2026 MedLabel &nbsp;&middot;&nbsp; <a href="#">Privacy</a> &nbsp;&middot;&nbsp; <a href="#">Terms</a></div>
+  <div class="ml-footer-right">Informational only &#8212; not a substitute for professional medical advice. Always verify with your pharmacist.</div>
 </footer>""", unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -916,12 +1183,19 @@ else:
     st.markdown("""
 <nav class="ml-nav">
   <a class="ml-logo" href="#">
-    <div class="ml-logo-icon"></div>
-    MedLabel
+    <div class="ml-logo-mark">
+      <svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+        <rect x="7.5" y="1.5" width="5" height="17" rx="2.5" fill="#07080D"/>
+        <rect x="1.5" y="7.5" width="17" height="5" rx="2.5" fill="#07080D"/>
+      </svg>
+    </div>
+    <div class="ml-logo-wordmark">
+      <span class="ml-logo-med">Med</span><span class="ml-logo-label">Label</span>
+    </div>
   </a>
   <div class="ml-nav-links">
-    <span style="font-size:13px;color:#4B5A6E;font-family:'DM Sans',sans-serif;">
-      AI can make mistakes &#8212; always verify with your pharmacist.
+    <span style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--text3);text-transform:uppercase;">
+      AI can make mistakes &#8212; verify with your pharmacist
     </span>
   </div>
 </nav>""", unsafe_allow_html=True)

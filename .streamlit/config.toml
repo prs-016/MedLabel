@@ -8,7 +8,8 @@ enableXsrfProtection = true
 gatherUsageStats = false
 
 [theme]
-primaryColor = "#0068C9"
-backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#F0F2F6"
-textColor = "#262730"
+primaryColor = "#C8FF57"
+backgroundColor = "#07080D"
+secondaryBackgroundColor = "#0E0F16"
+textColor = "#F0F4FF"
+font = "sans serif"
