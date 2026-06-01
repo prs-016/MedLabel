@@ -6,6 +6,7 @@ from pathlib import Path
 
 import PIL.Image
 import streamlit as st
+import streamlit.components.v1 as components
 from dotenv import load_dotenv
 
 # Allow imports from src/
@@ -1007,11 +1008,31 @@ if not _show_scanner:
     </div>
   </a>
   <div class="ml-nav-links">
-    <a href="#" onclick="(function(){var s=document.querySelector('[data-testid=stMain]');var t=document.getElementById('ml-features');if(s&&t)s.scrollTo({top:t.offsetTop-70,behavior:'smooth'});return false;})();return false;">Features</a>
-    <a href="#" onclick="(function(){var s=document.querySelector('[data-testid=stMain]');var t=document.getElementById('ml-how');if(s&&t)s.scrollTo({top:t.offsetTop-70,behavior:'smooth'});return false;})();return false;">How it works</a>
-    <a href="#" onclick="(function(){var s=document.querySelector('[data-testid=stMain]');var t=document.getElementById('ml-safety');if(s&&t)s.scrollTo({top:t.offsetTop-70,behavior:'smooth'});return false;})();return false;">Safety</a>
+    <a href="#" data-scrollto="ml-features">Features</a>
+    <a href="#" data-scrollto="ml-how">How it works</a>
+    <a href="#" data-scrollto="ml-safety">Safety</a>
   </div>
 </nav>""", unsafe_allow_html=True)
+
+    components.html("""<script>
+(function(){
+  function wire(){
+    var doc=parent.document;
+    doc.querySelectorAll('a[data-scrollto]').forEach(function(a){
+      a.addEventListener('click',function(e){
+        e.preventDefault();
+        var id=a.getAttribute('data-scrollto');
+        var main=doc.querySelector('[data-testid="stMain"]');
+        var el=doc.getElementById(id);
+        if(main&&el) main.scrollTo({top:el.offsetTop-70,behavior:'smooth'});
+      });
+    });
+  }
+  if(parent.document.readyState==='loading') parent.document.addEventListener('DOMContentLoaded',wire);
+  else wire();
+  setTimeout(wire,800);
+})();
+</script>""", height=0)
 
     st.markdown("""
 <div class="ml-hero-wrap">
