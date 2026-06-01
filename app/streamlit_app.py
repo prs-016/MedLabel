@@ -997,12 +997,9 @@ if not _show_scanner:
 <nav class="ml-nav">
   <a class="ml-logo" href="#">
     <div class="ml-logo-mark">
-      <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M3 7V3h4" stroke="#07080D" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M3 13v4h4" stroke="#07080D" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M17 7V3h-4" stroke="#07080D" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M17 13v4h-4" stroke="#07080D" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-        <line x1="3" y1="10" x2="17" y2="10" stroke="#07080D" stroke-width="1.6" stroke-linecap="round"/>
+      <svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+        <rect x="7.5" y="1.5" width="5" height="17" rx="2.5" fill="#07080D"/>
+        <rect x="1.5" y="7.5" width="17" height="5" rx="2.5" fill="#07080D"/>
       </svg>
     </div>
     <div class="ml-logo-wordmark">
@@ -1010,9 +1007,9 @@ if not _show_scanner:
     </div>
   </a>
   <div class="ml-nav-links">
-    <a href="#ml-features">Features</a>
-    <a href="#ml-how">How it works</a>
-    <a href="#ml-safety">Safety</a>
+    <a href="#" onclick="(function(){var s=document.querySelector('[data-testid=stMain]');var t=document.getElementById('ml-features');if(s&&t)s.scrollTo({top:t.offsetTop-70,behavior:'smooth'});return false;})();return false;">Features</a>
+    <a href="#" onclick="(function(){var s=document.querySelector('[data-testid=stMain]');var t=document.getElementById('ml-how');if(s&&t)s.scrollTo({top:t.offsetTop-70,behavior:'smooth'});return false;})();return false;">How it works</a>
+    <a href="#" onclick="(function(){var s=document.querySelector('[data-testid=stMain]');var t=document.getElementById('ml-safety');if(s&&t)s.scrollTo({top:t.offsetTop-70,behavior:'smooth'});return false;})();return false;">Safety</a>
   </div>
 </nav>""", unsafe_allow_html=True)
 
@@ -1166,12 +1163,9 @@ else:
 <nav class="ml-nav">
   <a class="ml-logo" href="#">
     <div class="ml-logo-mark">
-      <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M3 7V3h4" stroke="#07080D" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M3 13v4h4" stroke="#07080D" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M17 7V3h-4" stroke="#07080D" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M17 13v4h-4" stroke="#07080D" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-        <line x1="3" y1="10" x2="17" y2="10" stroke="#07080D" stroke-width="1.6" stroke-linecap="round"/>
+      <svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+        <rect x="7.5" y="1.5" width="5" height="17" rx="2.5" fill="#07080D"/>
+        <rect x="1.5" y="7.5" width="17" height="5" rx="2.5" fill="#07080D"/>
       </svg>
     </div>
     <div class="ml-logo-wordmark">
