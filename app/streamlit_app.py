@@ -391,23 +391,36 @@ section[data-testid="stSidebar"] { display: none !important; }
 .ml-nav {
   display: flex; align-items: center; justify-content: space-between;
   padding: 0 7vw; height: 68px;
-  background: rgba(7,8,13,0.92);
+  background: rgba(7,8,13,0.94);
   backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
   border-bottom: 1px solid var(--border);
   position: sticky; top: 0; z-index: 1000;
 }
 .ml-logo {
-  display: flex; align-items: center; gap: 9px;
-  font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700;
-  font-size: 16px; letter-spacing: -.2px;
-  color: var(--text); text-decoration: none;
+  display: flex; align-items: center; gap: 10px;
+  text-decoration: none; flex-shrink: 0;
 }
 .ml-logo-mark {
-  width: 30px; height: 30px; border-radius: 8px;
+  width: 34px; height: 34px; border-radius: 9px;
   background: var(--lime); flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
 }
-.ml-logo-mark svg { width: 16px; height: 16px; }
+.ml-logo-mark svg { width: 20px; height: 20px; }
+.ml-logo-wordmark {
+  display: flex; align-items: baseline; gap: 0;
+  line-height: 1;
+}
+.ml-logo-med {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-style: italic; font-weight: 700;
+  font-size: 20px; color: var(--text);
+  letter-spacing: -.3px;
+}
+.ml-logo-label {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 500; font-size: 15px;
+  color: var(--text2); letter-spacing: .3px;
+}
 .ml-nav-links { display: flex; align-items: center; gap: 28px; }
 .ml-nav-links a {
   color: var(--text2); text-decoration: none;
@@ -977,12 +990,17 @@ if not _show_scanner:
 <nav class="ml-nav">
   <a class="ml-logo" href="#">
     <div class="ml-logo-mark">
-      <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M8 2L3 4.5V9c0 3.31 2.36 6.41 5 7 2.64-.59 5-3.69 5-7V4.5L8 2Z" stroke="#07080D" stroke-width="1.5" stroke-linejoin="round"/>
-        <path d="M5.5 8.5l2 2 3-4" stroke="#07080D" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M3 7V3h4" stroke="#07080D" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M3 13v4h4" stroke="#07080D" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M17 7V3h-4" stroke="#07080D" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M17 13v4h-4" stroke="#07080D" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <line x1="3" y1="10" x2="17" y2="10" stroke="#07080D" stroke-width="1.6" stroke-linecap="round"/>
       </svg>
     </div>
-    MedLabel
+    <div class="ml-logo-wordmark">
+      <span class="ml-logo-med">Med</span><span class="ml-logo-label">Label</span>
+    </div>
   </a>
   <div class="ml-nav-links">
     <a href="#ml-features">Features</a>
@@ -1141,12 +1159,17 @@ else:
 <nav class="ml-nav">
   <a class="ml-logo" href="#">
     <div class="ml-logo-mark">
-      <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M8 2L3 4.5V9c0 3.31 2.36 6.41 5 7 2.64-.59 5-3.69 5-7V4.5L8 2Z" stroke="#07080D" stroke-width="1.5" stroke-linejoin="round"/>
-        <path d="M5.5 8.5l2 2 3-4" stroke="#07080D" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M3 7V3h4" stroke="#07080D" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M3 13v4h4" stroke="#07080D" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M17 7V3h-4" stroke="#07080D" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M17 13v4h-4" stroke="#07080D" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <line x1="3" y1="10" x2="17" y2="10" stroke="#07080D" stroke-width="1.6" stroke-linecap="round"/>
       </svg>
     </div>
-    MedLabel
+    <div class="ml-logo-wordmark">
+      <span class="ml-logo-med">Med</span><span class="ml-logo-label">Label</span>
+    </div>
   </a>
   <div class="ml-nav-links">
     <span style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--text3);text-transform:uppercase;">
