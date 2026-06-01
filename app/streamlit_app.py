@@ -194,6 +194,57 @@ def _find_other_drug(question: str, scanned: str) -> str:
     return ""
 
 
+_DIRECT_SYSTEM = """
+You are a careful medical assistant for patients and clinicians.
+Answer questions about medicines, dosages, side effects, and drug interactions
+clearly and concisely in plain English.
+Always recommend verifying with a pharmacist or doctor for personal medical decisions.
+Keep answers under 200 words unless the question needs more detail.
+""".strip()
+
+
+def _grok_direct(question: str, scanned_drug: str) -> dict:
+    """Answer using Grok directly (no RAG) when the vector DB is unavailable."""
+    xai_key = os.getenv("XAI_API_KEY", "")
+    if not xai_key:
+        return {
+            "kind": "no-key",
+            "summary": (
+                "XAI_API_KEY is not configured. "
+                "Add it to your secrets to enable chat answers."
+            ),
+            "results": [],
+        }
+    try:
+        from openai import OpenAI
+        client = OpenAI(
+            api_key=xai_key,
+            base_url="https://api.x.ai/v1",
+        )
+        model = os.getenv("XAI_TEXT_MODEL", "grok-3")
+        drug_line = (
+            f"The user has scanned a medicine label for: {scanned_drug}.\n"
+            if scanned_drug else ""
+        )
+        resp = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": _DIRECT_SYSTEM},
+                {"role": "user", "content": f"{drug_line}Question: {question}"},
+            ],
+            temperature=0.2,
+            max_tokens=512,
+        )
+        answer = (resp.choices[0].message.content or "").strip()
+        return {"kind": "grok-direct", "summary": answer, "results": []}
+    except Exception as exc:
+        return {
+            "kind": "error",
+            "summary": f"Could not reach Grok: {exc}",
+            "results": [],
+        }
+
+
 def _db_available() -> bool:
     try:
         from knowledge.chroma_config import get_chroma_db_path
@@ -209,15 +260,7 @@ def answer_question(question: str, scanned_drug: str) -> dict:
     {'kind', 'summary', 'results'} where results is a list of ranked chunks.
     """
     if not _db_available():
-        return {
-            "kind": "unavailable",
-            "summary": (
-                "The drug knowledge base is not available in this deployment. "
-                "Run `python run_seed.py` locally to populate `medlabel_db`, "
-                "or ask a general question — OCR and label simplification still work."
-            ),
-            "results": [],
-        }
+        return _grok_direct(question, scanned_drug)
 
     from knowledge.query_functions import (
         vector_search, adverse_events, interaction_check,
