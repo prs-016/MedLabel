@@ -299,6 +299,8 @@ def answer_question(question: str, scanned_drug: str) -> dict:
     return {"kind": kind, "summary": summary, "results": results}
 
 
+st.set_page_config(page_title="MedLabel", layout="wide")
+
 st.title("MedLabel: Intelligent Medicine Scanner")
 st.markdown("*AI can make mistakes. Always verify with the physical label or your pharmacist.*")
 
