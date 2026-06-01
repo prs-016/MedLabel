@@ -265,9 +265,12 @@ def answer_question(question: str, scanned_drug: str) -> dict:
     if not _db_available():
         return _grok_direct(question, scanned_drug)
 
-    from knowledge.query_functions import (
-        vector_search, adverse_events, interaction_check,
-    )
+    try:
+        from knowledge.query_functions import (
+            vector_search, adverse_events, interaction_check,
+        )
+    except Exception:
+        return _grok_direct(question, scanned_drug)
 
     query_drug = _resolve_query_drug(question, scanned_drug)
     q    = question.lower()
@@ -332,7 +335,15 @@ def answer_question(question: str, scanned_drug: str) -> dict:
             drug_context=drug_context,
             route_label=kind,
         )
-    except Exception as exc:  # noqa: BLE001
+    except RuntimeError as exc:
+        # Embedder failed (BGE-M3 not loaded) — fall back to Grok direct
+        if "BGE-M3" in str(exc) or "not loaded" in str(exc):
+            return _grok_direct(question, scanned_drug)
+        if results:
+            summary = results[0]["text"][:400].strip()
+        else:
+            summary = "I couldn't find relevant information for that question."
+    except Exception as exc:
         if results:
             summary = results[0]["text"][:400].strip()
             summary += f"\n\n_(Grok summary unavailable: {exc})_"
@@ -380,7 +391,8 @@ body, .stApp, .main, [data-testid="stAppViewContainer"] {
   color: var(--text) !important;
 }
 
-#MainMenu, header[data-testid="stHeader"], footer,
+#MainMenu, header[data-testid="stHeader"],
+footer:not(.ml-footer),
 .stDeployButton, [data-testid="collapsedControl"],
 section[data-testid="stSidebar"] { display: none !important; }
 
@@ -650,12 +662,13 @@ section[data-testid="stSidebar"] { display: none !important; }
 .ml-cta-section p { color: var(--text2); font-size: 15px; margin-bottom: 40px; font-weight: 300; }
 
 /* ────────────────── FOOTER ────────────────── */
-.ml-footer {
+footer.ml-footer, .ml-footer {
   padding: 32px 7vw;
   border-top: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: space-between;
+  display: flex !important; align-items: center; justify-content: space-between;
   flex-wrap: wrap; gap: 12px;
   background: var(--surface);
+  width: 100%;
 }
 .ml-footer-left { font-size: 13px; color: var(--text3); }
 .ml-footer-right { font-size: 12px; color: var(--text3); font-style: italic; }
@@ -665,20 +678,36 @@ section[data-testid="stSidebar"] { display: none !important; }
 .see-how-btn { text-decoration: none !important; }
 
 /* ────────────────── SCANNER ────────────────── */
-.ml-scanner { max-width: 1400px; margin: 0 auto; padding: 40px 7vw 60px; }
-.ml-scanner-header { margin-bottom: 40px; }
+.ml-scanner-page [data-testid="stMainBlockContainer"],
+.ml-scanner-page .block-container {
+  padding: 0 max(24px, 5vw) 60px !important;
+  max-width: 100% !important;
+}
+.ml-scanner-header { margin: 8px 0 36px; }
 .ml-scanner-title {
   font-family: 'Cormorant Garamond', Georgia, serif;
   font-style: italic; font-weight: 700;
-  font-size: clamp(28px, 3vw, 42px); color: var(--text);
-  margin-bottom: 6px; line-height: 1.1;
+  font-size: clamp(32px, 3.5vw, 52px); color: var(--text);
+  margin-bottom: 8px; line-height: 1.05;
 }
-.ml-scanner-desc { font-size: 14px; color: var(--text2); font-weight: 300; }
+.ml-scanner-desc { font-size: 14px; color: var(--text2); font-weight: 300; line-height: 1.7; }
 .ml-label {
   font-family: 'Space Mono', monospace;
   font-size: 10px; color: var(--text3); letter-spacing: 1.5px;
   text-transform: uppercase; margin-bottom: 10px;
 }
+/* Override Streamlit blue info/success/warning in scanner */
+[data-testid="stNotification"],
+[data-testid="stAlertContainer"],
+div[data-testid="stInfo"],
+div.stInfo, div[class*="stAlert"] {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 12px !important;
+  color: var(--text) !important;
+}
+div[data-testid="stInfo"] svg,
+div[class*="stAlert"] svg { color: var(--lime) !important; stroke: var(--lime) !important; }
 
 /* ────────────────── STREAMLIT WIDGETS ────────────────── */
 /* Primary buttons — layout on the button element only */
@@ -1010,7 +1039,7 @@ if not _show_scanner:
   <div class="ml-nav-links">
     <a href="#" data-scrollto="ml-features">Features</a>
     <a href="#" data-scrollto="ml-how">How it works</a>
-    <a href="#" data-scrollto="ml-safety">Safety</a>
+    <a href="#" data-scrollto="ml-safety">Disclaimer</a>
   </div>
 </nav>""", unsafe_allow_html=True)
 
@@ -1200,7 +1229,13 @@ else:
   </div>
 </nav>""", unsafe_allow_html=True)
 
-    st.markdown('<div class="ml-scanner">', unsafe_allow_html=True)
+    st.markdown("""
+<style>
+[data-testid="stMainBlockContainer"], .block-container {
+  padding: 0 max(24px, 5vw) 60px !important;
+  max-width: 100% !important;
+}
+</style>""", unsafe_allow_html=True)
 
     _bc, _tc = st.columns([1, 7])
     with _bc:
@@ -1269,24 +1304,14 @@ else:
                             tmp.write(raw)
                             tmp_path = tmp.name
 
-                    if packaging_type == "auto":
-                        with st.spinner("Detecting packaging type with YOLO…"):
-                            from vision.detector import YOLORouter
-                            router = YOLORouter()
-                            pkg, _bbox, _conf = router.detect_geometry(tmp_path)
-                            note = "" if router._trained else " *(fallback — model not trained)*"
-                            st.info(f"YOLO detected: **{'Flat' if pkg == 'flat' else 'Cylindrical'}**{note}")
-                    else:
-                        pkg = packaging_type
-
-                    path_label = (
-                        "Reading bottle label with xAI Vision…"
-                        if pkg == "cylindrical"
-                        else "Reading flat label with PaddleOCR…"
-                    )
-                    with st.spinner(path_label):
+                    spinner_label = {
+                        "cylindrical": "Reading bottle label with xAI Vision…",
+                        "flat":        "Reading flat label…",
+                        "auto":        "Analysing label…",
+                    }.get(packaging_type, "Analysing label…")
+                    with st.spinner(spinner_label):
                         from vision.ocr import run_ocr
-                        result = run_ocr(tmp_path, packaging_type=pkg)
+                        result = run_ocr(tmp_path, packaging_type=packaging_type)
 
                     if "reupload_required" in result.hallucination_flags:
                         conf_pct = int(result.confidence * 100)
@@ -1301,7 +1326,7 @@ else:
                         st.success(f"Done — confidence: {int(result.confidence * 100)}%")
 
                 except ImportError as exc:
-                    st.error(f"PaddleOCR is not installed: {exc}")
+                    st.error(f"A required library is missing: `{exc}` — check your installation.")
                 except Exception as exc:
                     st.error(f"OCR failed: {exc}")
                 finally:

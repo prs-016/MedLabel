@@ -54,9 +54,12 @@ class BGEM3EmbeddingFunction(EmbeddingFunction):
 
     def __call__(self, input: Documents) -> Embeddings:
         if self._model is None:
+            # Retry once — Streamlit can restart the module mid-session
+            self._load()
+        if self._model is None:
             raise RuntimeError(
-                "BGE-M3 not loaded. "
-                "pip install FlagEmbedding"
+                "BGE-M3 not loaded — sentence-transformers may have failed silently. "
+                "Check logs or run: pip install sentence-transformers"
             )
         if self._backend == "flag":
             result = self._model.encode(

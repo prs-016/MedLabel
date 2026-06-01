@@ -102,6 +102,20 @@ def load_bgr(path: str | os.PathLike):
     return cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
 
 
+_MAX_VISION_PX = 1568   # xAI Vision short-side limit; resize if larger
+_MAX_VISION_BYTES = 4 * 1024 * 1024  # 4 MB hard cap before base64
+
+
+def _resize_for_vision(img) -> "PIL.Image.Image":
+    """Downscale so the longer side ≤ _MAX_VISION_PX, preserving aspect ratio."""
+    w, h = img.size
+    longest = max(w, h)
+    if longest <= _MAX_VISION_PX:
+        return img
+    scale = _MAX_VISION_PX / longest
+    return img.resize((int(w * scale), int(h * scale)), resample=3)  # BICUBIC=3
+
+
 def encode_for_vision_api(
     path: str | os.PathLike | None = None,
     data: bytes | None = None,
@@ -111,10 +125,12 @@ def encode_for_vision_api(
     """
     Base64 + MIME for xAI / Gemini vision APIs.
 
-    HEIC/HEIF are decoded and re-encoded as JPEG — most vision APIs do not
-    accept image/heic in data URLs.
+    Always normalises to JPEG so the MIME type is guaranteed to match the bytes.
+    Resizes images larger than _MAX_VISION_PX on the longest side so xAI doesn't
+    reject oversized payloads.
     """
     import base64
+    from PIL import Image as _PILImage
 
     name = filename or (str(path) if path is not None else None)
     raw: bytes | None = data
@@ -122,32 +138,25 @@ def encode_for_vision_api(
         with open(path, "rb") as f:
             raw = f.read()
 
-    if raw is not None and (needs_heif(name, raw) or _looks_like_heic(raw)):
+    if raw is None:
+        raise ValueError("encode_for_vision_api requires path or data")
+
+    # Decode to PIL (handles HEIC, WebP, PNG, JPEG — anything Pillow can open)
+    if needs_heif(name, raw) or _looks_like_heic(raw):
         register_heif_opener()
+
+    try:
         img = open_image(data=raw, filename=name).convert("RGB")
-        buf = io.BytesIO()
-        img.save(buf, format="JPEG", quality=92)
-        raw = buf.getvalue()
-        return base64.b64encode(raw).decode("utf-8"), "image/jpeg"
+    except Exception:
+        # Last resort: try direct PIL open from bytes
+        img = _PILImage.open(io.BytesIO(raw)).convert("RGB")
 
-    if path is not None and is_heic_path(path):
-        register_heif_opener()
-        img = open_image(path=path).convert("RGB")
-        buf = io.BytesIO()
-        img.save(buf, format="JPEG", quality=92)
-        return base64.b64encode(buf.getvalue()).decode("utf-8"), "image/jpeg"
+    img = _resize_for_vision(img)
 
-    if raw is not None:
-        ext = Path(name or ".jpg").suffix.lower().lstrip(".")
-        mime_map = {
-            "jpg": "image/jpeg",
-            "jpeg": "image/jpeg",
-            "png": "image/png",
-            "webp": "image/webp",
-        }
-        return base64.b64encode(raw).decode("utf-8"), mime_map.get(ext, "image/jpeg")
-
-    raise ValueError("encode_for_vision_api requires path or data")
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=88)
+    jpeg_bytes = buf.getvalue()
+    return base64.b64encode(jpeg_bytes).decode("utf-8"), "image/jpeg"
 
 
 def materialize_upload(

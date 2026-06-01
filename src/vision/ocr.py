@@ -85,31 +85,32 @@ _DRUG_NAME_STOP = re.compile(
 
 class PathAOCR:
     """
-    PaddleOCR wrapper for flat labels (boxes, blister packs, cream tubes).
-
-    Usage
-    -----
-    ocr = PathAOCR()
-    lines = ocr.run(cv2_image)
-    # lines → [{"text": "...", "confidence": 0.98}, ...]
+    OCR wrapper for flat labels (boxes, blister packs, cream tubes).
+    Uses EasyOCR (primary — Python 3.14 + Apple Silicon compatible).
+    Falls back to PaddleOCR 2.x if EasyOCR is not installed.
     """
 
     def __init__(self, lang: str = "en") -> None:
+        self._backend = None
+        # Try EasyOCR first
+        try:
+            import easyocr  # type: ignore
+            self._reader = easyocr.Reader([lang], verbose=False)
+            self._backend = "easyocr"
+            return
+        except ImportError:
+            pass
+        # Fall back to PaddleOCR 2.x
         try:
             from paddleocr import PaddleOCR  # type: ignore
-            import paddleocr as _paddleocr_mod
+            self._ocr = PaddleOCR(use_angle_cls=True, lang=lang, show_log=False)
+            self._backend = "paddleocr"
+            return
         except ImportError as exc:
             raise ImportError(
-                "PaddleOCR is not installed. "
-                "Run: pip install paddleocr && pip install -r requirements-paddle.txt"
+                "No OCR backend available. "
+                "Install EasyOCR: pip install easyocr"
             ) from exc
-        major = int(_paddleocr_mod.__version__.split(".")[0])
-        if major >= 3:
-            self._ocr = PaddleOCR(use_textline_orientation=True, lang=lang)
-        else:
-            # PaddleOCR 2.x (what most installs have)
-            self._ocr = PaddleOCR(use_angle_cls=True, lang=lang, show_log=False)
-        self._paddle_major = major
 
     # ── public ────────────────────────────────────────────────────────────────
 
@@ -137,18 +138,17 @@ class PathAOCR:
             img = _auto_rotate(img, mode=page_rotate_mode)
 
         lines: list[dict] = []
-        if hasattr(self._ocr, "predict"):
-            # PaddleOCR 3.x
-            paddle_results = self._ocr.predict(img)
-            for page_result in (paddle_results or []):
-                d = dict(page_result)
-                texts  = d.get("rec_texts", []) or []
-                scores = d.get("rec_scores", []) or []
-                for text, conf in zip(texts, scores):
-                    if float(conf) >= min_confidence and text.strip():
-                        lines.append({"text": text.strip(), "confidence": float(conf)})
-        else:
-            # PaddleOCR 2.x — .ocr() returns [[[box, (text, conf)], ...]]
+
+        if self._backend == "easyocr":
+            import cv2
+            import numpy as np
+            rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            raw = self._reader.readtext(rgb, detail=1)
+            for (_bbox, text, conf) in raw:
+                if float(conf) >= min_confidence and str(text).strip():
+                    lines.append({"text": str(text).strip(), "confidence": float(conf)})
+
+        elif self._backend == "paddleocr":
             raw = self._ocr.ocr(img, cls=True)
             for page in (raw or []):
                 if not page:
@@ -184,9 +184,11 @@ def run_path_a(image_path: str) -> OCRResult:
     lines = ocr.run(img, preprocess=True)
 
     # ── No text at all ────────────────────────────────────────────────────────
+    path_label = ocr._backend  # "easyocr" or "paddleocr"
+
     if not lines:
         return OCRResult(
-            path_used="paddle_ocr",
+            path_used=path_label,
             confidence=0.0,
             hallucination_flags=["no_text_detected", "reupload_required"],
         )
@@ -202,7 +204,7 @@ def run_path_a(image_path: str) -> OCRResult:
         )
         return OCRResult(
             raw_text=all_text,
-            path_used="paddle_ocr",
+            path_used=path_label,
             confidence=mean_conf,
             hallucination_flags=["confidence_too_low", "reupload_required"],
         )
@@ -218,7 +220,7 @@ def run_path_a(image_path: str) -> OCRResult:
         directions=         sections["directions"],
         expiry_date=        sections["expiry_date"],
         raw_text=           all_text,
-        path_used=          "paddle_ocr",
+        path_used=          path_label,
         confidence=         mean_conf,
     )
 
@@ -267,15 +269,19 @@ def _auto_rotate(img, *, mode: str = "heuristic"):
         return img
 
     if mode == "ocr":
-        from paddleocr import PaddleOCR  # type: ignore
-        _tmp = PaddleOCR(use_angle_cls=True, lang="en", show_log=False)
-
-        def _count(candidate):
-            if hasattr(_tmp, "predict"):
-                res = _tmp.predict(candidate) or []
-                return sum(len(dict(r).get("rec_texts") or []) for r in res)
-            raw = _tmp.ocr(candidate, cls=True) or []
-            return sum(len(page) for page in raw if page)
+        try:
+            import easyocr
+            _tmp = easyocr.Reader(["en"], verbose=False)
+            def _count(candidate):
+                import cv2 as _cv2
+                rgb = _cv2.cvtColor(candidate, _cv2.COLOR_BGR2RGB)
+                return len(_tmp.readtext(rgb, detail=0))
+        except ImportError:
+            from paddleocr import PaddleOCR  # type: ignore
+            _tmp = PaddleOCR(use_angle_cls=True, lang="en", show_log=False)
+            def _count(candidate):
+                raw = _tmp.ocr(candidate, cls=True) or []
+                return sum(len(page) for page in raw if page)
 
         rotated = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
         return rotated if _count(rotated) > _count(img) else img
@@ -674,6 +680,68 @@ def _check_hallucinations(result: OCRResult) -> OCRResult:
 
 # ── Router ─────────────────────────────────────────────────────────────────────
 
+_AUTO_DETECT_PROMPT = """
+You are reading a medicine label photo.
+First, determine if this label is on a FLAT surface (box, blister pack, tube, sachet)
+or a CURVED surface (cylindrical bottle, round pill container).
+
+Then extract these fields exactly as printed. If a field is not visible, use an empty string.
+
+Return ONLY a JSON object in this exact format, no other text:
+{
+  "label_type": "flat or cylindrical",
+  "drug_name": "",
+  "dosage": "",
+  "active_ingredients": "",
+  "warnings": "",
+  "directions": "",
+  "expiry_date": ""
+}
+"""
+
+
+def _run_auto_via_vision(image_path: str) -> OCRResult:
+    """Use xAI Vision to both classify label geometry and extract text (no YOLO needed)."""
+    key = os.getenv("XAI_API_KEY", "")
+    if not key:
+        raise ValueError("XAI_API_KEY not configured.")
+
+    image_b64, mime_type = _encode_image(image_path)
+    from openai import OpenAI
+    client = OpenAI(api_key=key, base_url=XAI_BASE_URL)
+    resp = client.chat.completions.create(
+        model=XAI_VISION_MODEL,
+        messages=[{
+            "role": "user",
+            "content": [
+                {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{image_b64}"}},
+                {"type": "text", "text": _AUTO_DETECT_PROMPT},
+            ],
+        }],
+        temperature=0.1,
+    )
+    raw = resp.choices[0].message.content or ""
+    cleaned = re.sub(r"```(?:json)?\s*", "", raw).strip().strip("`").strip()
+    try:
+        data = json.loads(cleaned)
+        label_type = data.get("label_type", "cylindrical").lower()
+        path_label = f"xai_vision_auto({'flat' if 'flat' in label_type else 'cylindrical'})"
+        return OCRResult(
+            drug_name=          data.get("drug_name", "").strip(),
+            dosage=             data.get("dosage", "").strip(),
+            active_ingredients= data.get("active_ingredients", "").strip(),
+            warnings=           data.get("warnings", "").strip(),
+            directions=         data.get("directions", "").strip(),
+            expiry_date=        data.get("expiry_date", "").strip(),
+            raw_text=           raw,
+            path_used=          path_label,
+            confidence=         0.9,
+        )
+    except json.JSONDecodeError:
+        return OCRResult(raw_text=raw, path_used="xai_vision_auto", confidence=0.3,
+                         hallucination_flags=["response_not_json"])
+
+
 def run_ocr(image_path: str, packaging_type: str) -> OCRResult:
     """
     Main entry point called by the rest of the pipeline.
@@ -681,15 +749,36 @@ def run_ocr(image_path: str, packaging_type: str) -> OCRResult:
     Parameters
     ----------
     image_path     : path to the image file
-    packaging_type : "flat"         → Path A (PaddleOCR)
+    packaging_type : "flat"         → Path A (PaddleOCR) with xAI Vision fallback
                      "cylindrical"  → Path B (xAI Grok Vision)
+                     "auto"         → YOLO detect then route; xAI Vision fallback
     """
     if packaging_type == "cylindrical":
         return run_path_b(image_path)
+
     elif packaging_type == "flat":
-        return run_path_a(image_path)
+        try:
+            return run_path_a(image_path)
+        except ImportError:
+            # EasyOCR not installed (Cloud) — use xAI Vision
+            result = run_path_b(image_path)
+            result.path_used = "xai_vision_flat"
+            return result
+
+    elif packaging_type == "auto":
+        try:
+            from vision.detector import YOLORouter
+            router = YOLORouter()
+            if router._trained:
+                detected, _bbox, _conf = router.detect_geometry(image_path)
+                return run_ocr(image_path, detected)
+        except Exception:
+            pass  # inference-sdk missing or Roboflow unreachable
+        # Roboflow unavailable — xAI Vision classifies geometry + extracts text
+        return _run_auto_via_vision(image_path)
+
     else:
         raise ValueError(
             f"Unknown packaging_type '{packaging_type}'. "
-            "Expected 'flat' or 'cylindrical'."
+            "Expected 'flat', 'cylindrical', or 'auto'."
         )
