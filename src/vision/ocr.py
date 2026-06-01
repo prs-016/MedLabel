@@ -176,11 +176,9 @@ def run_path_a(image_path: str) -> OCRResult:
     hallucination_flags includes "reupload_required" so callers / the UI
     can prompt the user to retake the photo.
     """
-    import cv2
+    from vision.image_io import load_bgr
 
-    img = cv2.imread(image_path)
-    if img is None:
-        raise ValueError(f"Cannot read image file: {image_path!r}")
+    img = load_bgr(image_path)
 
     ocr   = PathAOCR()
     lines = ocr.run(img, preprocess=True)
@@ -322,7 +320,13 @@ _DRUG_NAME_STOP = re.compile(
 # ── Field extraction helpers ──────────────────────────────────────────────────
 
 def _extract_drug_name(lines: list[dict]) -> str:
-    """First high-confidence line near the top that is not a metadata keyword."""
+    """Known-brand scan across all lines, then first clean line as fallback."""
+    from vision.brands import extract_product_name_from_ocr_lines
+
+    name = extract_product_name_from_ocr_lines(lines)
+    if name:
+        return name
+
     for ln in lines:
         text = ln["text"]
         if (
@@ -516,22 +520,10 @@ def _parse_vision_response(raw: str, *, path_used: str) -> OCRResult:
 # ── Legacy Gemini Path B (kept for reference, not used by run_ocr) ───────────
 
 def _encode_image(image_path: str) -> tuple[str, str]:
-    """Read image from disk, return (base64_string, mime_type)."""
-    ext = image_path.rsplit(".", 1)[-1].lower()
-    mime_map = {
-    "jpg":  "image/jpeg",
-    "jpeg": "image/jpeg",
-    "png":  "image/png",
-    "webp": "image/webp",
-    "heic": "image/heic",
-    "heif": "image/heif",
-    }
-    mime_type = mime_map.get(ext, "image/jpeg")
+    """Read image from disk; HEIC/HEIF → JPEG for vision API compatibility."""
+    from vision.image_io import encode_for_vision_api
 
-    with open(image_path, "rb") as f:
-        image_b64 = base64.b64encode(f.read()).decode("utf-8")
-
-    return image_b64, mime_type
+    return encode_for_vision_api(path=image_path)
 
 
 def _call_gemini(image_b64: str, mime_type: str, api_key: str) -> str:

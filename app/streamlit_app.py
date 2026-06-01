@@ -72,12 +72,26 @@ _ADVERSE_WORDS = (
     "side effect", "side-effect", "adverse", "reaction", "risk", "danger",
     "harm", "safe", "warning", "overdose", "too much", "symptom",
 )
+_DOSAGE_WORDS = (
+    "dose", "dosage", "how much", "how many", "max daily", "maximum daily",
+    "per day", "daily limit", "take at once", "every hours",
+)
 
 
 def _clean_scanned_drug(name: str) -> str:
     """OCR drug name may be a brand; normalize to a generic we can query."""
     if not name:
         return ""
+    try:
+        from vision.brands import extract_product_name_from_ocr_lines
+
+        fixed = extract_product_name_from_ocr_lines(
+            [{"text": name, "confidence": 1.0}]
+        )
+        if fixed:
+            name = fixed
+    except Exception:
+        pass
     low = name.strip().lower()
     if low in _BRAND_TO_GENERIC:
         return _BRAND_TO_GENERIC[low]
@@ -254,6 +268,11 @@ def answer_question(question: str, scanned_drug: str) -> dict:
                 f"{question} dosage administration clinical pharmacology "
                 "take with food meals absorption"
             )
+        elif any(w in q for w in _DOSAGE_WORDS):
+            search_q = (
+                f"{question} dosage and administration maximum daily dose "
+                "do not exceed"
+            )
         elif any(w in q for w in ("indicated", "indication", "used for", "what is it for")):
             search_q = f"{question} indications and usage"
         results = vector_search(
@@ -333,14 +352,26 @@ with col1:
     st.header("Scan Medicine")
     uploaded_file = st.file_uploader(
         "Upload a photo of your medicine label",
-        type=["jpg", "jpeg", "png"],
+        type=["jpg", "jpeg", "png", "heic", "heif"],
     )
 
     if uploaded_file:
-        img = PIL.Image.open(uploaded_file)
-        st.image(img, caption="Uploaded Image", use_container_width=True)
+        try:
+            from vision.image_io import open_image
 
-        if st.button("Analyze Label"):
+            img = open_image(
+                data=uploaded_file.getvalue(),
+                filename=uploaded_file.name,
+            )
+            st.image(img, caption="Uploaded Image", use_container_width=True)
+        except ImportError as exc:
+            st.error(str(exc))
+            img = None
+        except Exception as exc:
+            st.error(f"Could not open image: {exc}")
+            img = None
+
+        if img is not None and st.button("Analyze Label"):
             path_label = (
                 "xAI Vision on bottle label..."
                 if packaging_type == "cylindrical"
@@ -348,13 +379,15 @@ with col1:
             )
             with st.spinner(path_label):
                 try:
+                    from vision.image_io import materialize_upload
                     from vision.ocr import run_ocr
 
-                    # Save upload to a temp file so cv2 / vision API can read it
-                    suffix = Path(uploaded_file.name).suffix or ".png"
-                    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-                        tmp.write(uploaded_file.getvalue())
-                        tmp_path = tmp.name
+                    tmp_path = materialize_upload(
+                        uploaded_file.getvalue(),
+                        uploaded_file.name,
+                        for_opencv=(packaging_type == "flat"),
+                        for_vision=(packaging_type == "cylindrical"),
+                    )
 
                     result = run_ocr(tmp_path, packaging_type=packaging_type)
                     os.unlink(tmp_path)

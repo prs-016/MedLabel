@@ -38,10 +38,14 @@ def train_adverse_events_reranker() -> None:
     model = CrossEncoder(BASE_MODEL, num_labels=1)
 
     device = "mps" if torch.backends.mps.is_available() else "cpu"
+    if torch.cuda.is_available():
+        device = "cuda"
     model.model.to(device)
     print(f"Training on device: {device.upper()}")
 
     os.makedirs(MODEL_OUTPUT_PATH, exist_ok=True)
+
+    use_amp = device == "cuda"
 
     print("\nStarting training (a few minutes)...")
     model.fit(
@@ -49,7 +53,7 @@ def train_adverse_events_reranker() -> None:
         epochs=3,
         warmup_steps=10,
         output_path=MODEL_OUTPUT_PATH,
-        use_amp=True,
+        use_amp=use_amp,
     )
 
     print("\nWriting model files to disk...")

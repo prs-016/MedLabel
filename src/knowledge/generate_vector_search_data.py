@@ -141,7 +141,11 @@ def main() -> None:
     all_chunks = _load_chunks()
     print(f"  {len(all_chunks)} usable chunks found.")
     if not all_chunks:
-        raise SystemExit("No chunks available -- seed the DB first (run_seed.py).")
+        raise SystemExit(
+            "No chunks available. Populate the label DB first, e.g.\n"
+            "  PYTHONPATH=src python src/knowledge/ingest_data.py\n"
+            "and ensure CHROMA_DB_PATH points at your populated medlabel_db."
+        )
 
     sample = _stratified_sample(all_chunks, MAX_CHUNKS)
     print(f"Sampling {len(sample)} diverse chunks for query generation "
