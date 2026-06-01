@@ -367,7 +367,7 @@ st.markdown("""
   --red:      #FF4D4D;
   --text:     #F0F4FF;
   --text2:    #8290A4;
-  --text3:    #3D4A5A;
+  --text3:    #5A6A80;
   scroll-behavior: smooth;
 }
 
@@ -817,7 +817,7 @@ div[data-testid="stDivider"] { border-color: rgba(255,255,255,0.07) !important; 
 [data-testid="stAppViewContainer"],
 [data-testid="stApp"],
 .stApp, .main {
-  background-color: #080D18 !important;
+  background-color: #07080D !important;
 }
 
 /* Block container — Streamlit adds its own padding/bg */
@@ -838,13 +838,13 @@ div[data-testid="stDivider"] { border-color: rgba(255,255,255,0.07) !important; 
 [data-testid="stMarkdownContainer"] h4,
 [data-testid="stMarkdownContainer"] code,
 .stMarkdown p, .stMarkdown li {
-  color: #E8EEFF !important;
+  color: #F0F4FF !important;
   font-family: 'Plus Jakarta Sans', sans-serif !important;
 }
 
 /* st.write plain text */
 [data-testid="stText"] {
-  color: #E8EEFF !important;
+  color: #F0F4FF !important;
   font-family: 'Plus Jakarta Sans', sans-serif !important;
 }
 
@@ -859,12 +859,12 @@ label, .stSelectbox label, .stRadio label,
 /* st.info / st.success / st.warning / st.error */
 [data-testid="stNotification"],
 [data-testid="stAlert"] {
-  background: #0D1425 !important;
+  background: #0E0F16 !important;
   border-radius: 12px !important;
   border: 1px solid rgba(255,255,255,0.08) !important;
-  color: #E8EEFF !important;
+  color: #F0F4FF !important;
 }
-[data-testid="stAlert"] p { color: #E8EEFF !important; }
+[data-testid="stAlert"] p { color: #F0F4FF !important; }
 
 /* st.caption */
 [data-testid="stCaptionContainer"] p,
@@ -876,8 +876,8 @@ label, .stSelectbox label, .stRadio label,
 /* Text area */
 .stTextArea label { color: #8892A4 !important; }
 .stTextArea textarea {
-  background: #0D1425 !important;
-  color: #E8EEFF !important;
+  background: #0E0F16 !important;
+  color: #F0F4FF !important;
   border: 1px solid rgba(255,255,255,0.08) !important;
 }
 
@@ -893,7 +893,7 @@ label, .stSelectbox label, .stRadio label,
 [data-testid="stExpanderDetails"],
 details summary p,
 .stExpander details summary span {
-  color: #E8EEFF !important;
+  color: #F0F4FF !important;
 }
 
 /* Tabs */
@@ -904,17 +904,17 @@ details summary p,
 
 /* Chat input area */
 [data-testid="stChatInputContainer"] {
-  background: #080D18 !important;
+  background: #07080D !important;
   border-top: 1px solid rgba(255,255,255,0.06) !important;
 }
 [data-testid="stChatInput"] {
-  background: #0D1425 !important;
+  background: #0E0F16 !important;
   border: 1px solid rgba(255,255,255,0.08) !important;
   border-radius: 14px !important;
 }
 
 /* Chat message avatars and text */
-[data-testid="stChatMessage"] p { color: #E8EEFF !important; }
+[data-testid="stChatMessage"] p { color: #F0F4FF !important; }
 
 /* Metric delta */
 [data-testid="stMetricDelta"] svg { stroke: var(--lime) !important; }
@@ -927,13 +927,13 @@ hr { border-color: rgba(255,255,255,0.07) !important; }
 
 /* Selectbox / dropdown */
 [data-baseweb="select"] > div {
-  background: #0D1425 !important;
+  background: #0E0F16 !important;
   border-color: rgba(255,255,255,0.08) !important;
-  color: #E8EEFF !important;
+  color: #F0F4FF !important;
 }
 [data-baseweb="popover"] ul {
-  background: #0D1425 !important;
-  color: #E8EEFF !important;
+  background: #0E0F16 !important;
+  color: #F0F4FF !important;
 }
 
 /* Code blocks */
