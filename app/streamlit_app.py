@@ -265,9 +265,12 @@ def answer_question(question: str, scanned_drug: str) -> dict:
     if not _db_available():
         return _grok_direct(question, scanned_drug)
 
-    from knowledge.query_functions import (
-        vector_search, adverse_events, interaction_check,
-    )
+    try:
+        from knowledge.query_functions import (
+            vector_search, adverse_events, interaction_check,
+        )
+    except Exception:
+        return _grok_direct(question, scanned_drug)
 
     query_drug = _resolve_query_drug(question, scanned_drug)
     q    = question.lower()
@@ -332,7 +335,15 @@ def answer_question(question: str, scanned_drug: str) -> dict:
             drug_context=drug_context,
             route_label=kind,
         )
-    except Exception as exc:  # noqa: BLE001
+    except RuntimeError as exc:
+        # Embedder failed (BGE-M3 not loaded) — fall back to Grok direct
+        if "BGE-M3" in str(exc) or "not loaded" in str(exc):
+            return _grok_direct(question, scanned_drug)
+        if results:
+            summary = results[0]["text"][:400].strip()
+        else:
+            summary = "I couldn't find relevant information for that question."
+    except Exception as exc:
         if results:
             summary = results[0]["text"][:400].strip()
             summary += f"\n\n_(Grok summary unavailable: {exc})_"
