@@ -227,7 +227,7 @@ def _grok_direct(question: str, scanned_drug: str) -> dict:
         return {
             "kind": "no-key",
             "summary": (
-                "XAI_API_KEY is not configured. "
+                "Model API key is not configured. "
                 "Add it to your secrets to enable chat answers."
             ),
             "results": [],
@@ -253,11 +253,11 @@ def _grok_direct(question: str, scanned_drug: str) -> dict:
             max_tokens=512,
         )
         answer = (resp.choices[0].message.content or "").strip()
-        return {"kind": "grok-direct", "summary": answer, "results": []}
+        return {"kind": "our-model", "summary": answer, "results": []}
     except Exception as exc:
         return {
             "kind": "error",
-            "summary": f"Could not reach Grok: {exc}",
+            "summary": f"Could not reach our model: {exc}",
             "results": [],
         }
 
@@ -360,7 +360,7 @@ def answer_question(question: str, scanned_drug: str) -> dict:
     except Exception as exc:
         if results:
             summary = results[0]["text"][:400].strip()
-            summary += f"\n\n_(Grok summary unavailable: {exc})_"
+            summary += f"\n\n_(Summary unavailable: {exc})_"
         else:
             summary = (
                 "I couldn't find relevant information in the label database "
@@ -1117,8 +1117,8 @@ if not _show_scanner:
     <div class="ml-stat-label">OCR + Vision + YOLO</div>
   </div>
   <div class="ml-stat">
-    <div class="ml-stat-num">Grok</div>
-    <div class="ml-stat-label">xAI language model</div>
+    <div class="ml-stat-num">BGE-M3</div>
+    <div class="ml-stat-label">Neural semantic search</div>
   </div>
   <div class="ml-stat">
     <div class="ml-stat-num">0 kb</div>
@@ -1145,7 +1145,7 @@ if not _show_scanner:
         </div>
       </div>
       <h3>Smart scanning</h3>
-      <p>YOLO geometry detection routes each photo to the right pipeline — PaddleOCR for flat labels, Vision AI for curved bottles.</p>
+      <p>YOLO geometry detection routes each photo to the right pipeline — OCR for flat labels, Vision for curved bottles.</p>
     </div>
     <div class="ml-card">
       <div class="ml-card-num">02</div>
@@ -1189,12 +1189,12 @@ if not _show_scanner:
     <div class="ml-step">
       <div class="ml-step-num">02</div>
       <h4>AI reads the label</h4>
-      <p>YOLO detects geometry, then OCR or Vision AI extracts the text accurately.</p>
+      <p>YOLO detects geometry, then our model extracts the text accurately.</p>
     </div>
     <div class="ml-step">
       <div class="ml-step-num">03</div>
       <h4>Get plain answers</h4>
-      <p>Ask questions in natural language. Grok answers using official FDA data.</p>
+      <p>Ask questions in natural language. Our model answers using official FDA data.</p>
     </div>
   </div>
 </section>""", unsafe_allow_html=True)
@@ -1273,7 +1273,7 @@ else:
             "Label type",
             options=["cylindrical", "flat", "auto"],
             format_func=lambda x: {
-                "cylindrical": "\U0001fad9  Bottle / curved label  (xAI Vision)",
+                "cylindrical": "\U0001fad9  Bottle / curved label",
                 "flat":        "\U0001f4e6  Flat label  (PaddleOCR)",
                 "auto":        "\U0001f916  Auto-detect  (YOLO)",
             }[x],
@@ -1319,7 +1319,7 @@ else:
                             tmp_path = tmp.name
 
                     spinner_label = {
-                        "cylindrical": "Reading bottle label with xAI Vision…",
+                        "cylindrical": "Reading bottle label…",
                         "flat":        "Reading flat label…",
                         "auto":        "Analysing label…",
                     }.get(packaging_type, "Analysing label…")
@@ -1377,10 +1377,10 @@ else:
                         st.rerun()
                 else:
                     if gemini_status == "Missing":
-                        st.warning("Gemini API key not set — add GEMINI_API_KEY to secrets.")
+                        st.warning("Model key not configured — add it to secrets.")
                     else:
                         if st.button("Generate Plain-English Summary", type="primary"):
-                            with st.spinner("Asking Gemini to simplify the label…"):
+                            with st.spinner("Simplifying label…"):
                                 from agent.simplifier import simplify_label
                                 summary = simplify_label(result)
                                 st.session_state["simplified_summary"] = summary
@@ -1416,15 +1416,13 @@ else:
                                     st.write(r["text"][:500] + "…")
                                     st.divider()
 
-            # Input renders after history → always appears below the last answer.
-            user_input = st.chat_input("e.g. What are the side effects? Can I take this with Advil?")
-            if user_input:
-                st.session_state.setdefault("chat_history", []).append(
-                    {"role": "user", "content": user_input}
-                )
+            # If there's a pending question (user just submitted), compute the answer
+            # now — the user message is already visible above from the history render.
+            if st.session_state.get("_chat_pending"):
+                pending_q = st.session_state.pop("_chat_pending")
                 with st.spinner("Thinking…"):
                     try:
-                        ans = answer_question(user_input, scanned_drug)
+                        ans = answer_question(pending_q, scanned_drug)
                     except Exception as exc:
                         ans = {"kind": "error",
                                "summary": f"Something went wrong: {exc}",
@@ -1435,6 +1433,17 @@ else:
                     "route":   ans["kind"],
                     "results": ans.get("results", []),
                 })
+                st.rerun()
+
+            # Input renders after history → always appears below the last answer.
+            # On submit: append user message + set pending flag, then rerun immediately
+            # so the query is visible before the spinner starts.
+            user_input = st.chat_input("e.g. What are the side effects? Can I take this with Advil?")
+            if user_input:
+                st.session_state.setdefault("chat_history", []).append(
+                    {"role": "user", "content": user_input}
+                )
+                st.session_state["_chat_pending"] = user_input
                 st.rerun()
 
     st.markdown('</div>', unsafe_allow_html=True)
