@@ -755,28 +755,16 @@ def run_ocr(image_path: str, packaging_type: str) -> OCRResult:
         return run_path_b(image_path)
 
     elif packaging_type == "flat":
-        try:
-            return run_path_a(image_path)
-        except ImportError:
-            # PaddleOCR not installed (Cloud deployment) — use xAI Vision
-            result = run_path_b(image_path)
-            result.path_used = "xai_vision (PaddleOCR unavailable — Cloud fallback)"
-            return result
+        return run_path_a(image_path)
 
     elif packaging_type == "auto":
-        try:
-            from vision.detector import YOLORouter
-            router = YOLORouter()
-            if router._trained:
-                detected, _bbox, _conf = router.detect_geometry(image_path)
-                return run_ocr(image_path, detected)
-            # No trained model — fall through to xAI Vision classifier
-        except ImportError:
-            pass  # ultralytics not installed
-
-        # Use xAI Vision to classify geometry, then extract in same call
-        result = _run_auto_via_vision(image_path)
-        return result
+        from vision.detector import YOLORouter
+        router = YOLORouter()
+        if router._trained:
+            detected, _bbox, _conf = router.detect_geometry(image_path)
+            return run_ocr(image_path, detected)
+        # No trained YOLO model — use xAI Vision to classify + extract
+        return _run_auto_via_vision(image_path)
 
     else:
         raise ValueError(

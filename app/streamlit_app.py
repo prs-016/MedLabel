@@ -1293,24 +1293,14 @@ else:
                             tmp.write(raw)
                             tmp_path = tmp.name
 
-                    if packaging_type == "auto":
-                        with st.spinner("Detecting packaging type with YOLO…"):
-                            from vision.detector import YOLORouter
-                            router = YOLORouter()
-                            pkg, _bbox, _conf = router.detect_geometry(tmp_path)
-                            note = "" if router._trained else " *(fallback — model not trained)*"
-                            st.info(f"YOLO detected: **{'Flat' if pkg == 'flat' else 'Cylindrical'}**{note}")
-                    else:
-                        pkg = packaging_type
-
-                    path_label = (
-                        "Reading bottle label with xAI Vision…"
-                        if pkg == "cylindrical"
-                        else "Reading flat label with PaddleOCR…"
-                    )
-                    with st.spinner(path_label):
+                    spinner_label = {
+                        "cylindrical": "Reading bottle label with xAI Vision…",
+                        "flat":        "Reading flat label…",
+                        "auto":        "Analysing label…",
+                    }.get(packaging_type, "Analysing label…")
+                    with st.spinner(spinner_label):
                         from vision.ocr import run_ocr
-                        result = run_ocr(tmp_path, packaging_type=pkg)
+                        result = run_ocr(tmp_path, packaging_type=packaging_type)
 
                     if "reupload_required" in result.hallucination_flags:
                         conf_pct = int(result.confidence * 100)
