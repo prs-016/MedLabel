@@ -51,7 +51,15 @@ _INTERACTION_WORDS = (
     "interact", "interaction", "taken with", "mix", "combine",
     "combined", "together", "can i take", "can you take", "is it safe",
     "safe to take", "along with", "alongside",
+    "drink alcohol", "drinking alcohol", "have a drink", "have alcohol",
 )
+
+# Substances that can interact with drugs but aren't in the drug DB.
+# Recognised so they appear as drug_b in interaction_check.
+_KNOWN_SUBSTANCES = [
+    "alcohol", "grapefruit", "caffeine", "tobacco", "smoking",
+    "milk", "antacid", "dairy",
+]
 # "with food/water" is dosage guidance, not a drug-drug interaction.
 _NON_DRUG_WITH_PHRASES = (
     "with food", "with meals", "with a meal", "with water", "with milk",
@@ -84,7 +92,7 @@ def _clean_scanned_drug(name: str) -> str:
 
 
 def _extract_mentioned_drugs(question: str) -> list[str]:
-    """All drugs/brands mentioned in the question, in order of appearance."""
+    """All drugs/brands/substances mentioned in the question, in order of appearance."""
     q = question.lower()
     found: list[tuple[int, str]] = []
     seen: set[str] = set()
@@ -100,6 +108,12 @@ def _extract_mentioned_drugs(question: str) -> list[str]:
         if idx >= 0 and drug not in seen:
             found.append((idx, drug))
             seen.add(drug)
+
+    for substance in _KNOWN_SUBSTANCES:
+        idx = q.find(substance)
+        if idx >= 0 and substance not in seen:
+            found.append((idx, substance))
+            seen.add(substance)
 
     found.sort(key=lambda x: x[0])
     return [generic for _, generic in found]
@@ -1383,44 +1397,44 @@ else:
             else:
                 st.caption("Tip: scan a label first, or ask any general drug question.")
 
+            # Render all messages from history first, so input always sits below.
             for msg in st.session_state.get("chat_history", []):
                 with st.chat_message(msg["role"]):
                     st.write(msg["content"])
+                    if msg["role"] == "assistant":
+                        if msg.get("route"):
+                            st.caption(f"Route: `{msg['route']}`")
+                        if msg.get("results"):
+                            with st.expander(f"{len(msg['results'])} FDA label sources"):
+                                for i, r in enumerate(msg["results"], 1):
+                                    meta = r.get("metadata", {})
+                                    st.markdown(
+                                        f"**{i}. {meta.get('drug_name','?')}** — "
+                                        f"*{meta.get('section_type','?')}* "
+                                        f"(score {r.get('final_score',0):.2f})"
+                                    )
+                                    st.write(r["text"][:500] + "…")
+                                    st.divider()
 
+            # Input renders after history → always appears below the last answer.
             user_input = st.chat_input("e.g. What are the side effects? Can I take this with Advil?")
             if user_input:
                 st.session_state.setdefault("chat_history", []).append(
                     {"role": "user", "content": user_input}
                 )
-                with st.chat_message("user"):
-                    st.write(user_input)
-
-                with st.chat_message("assistant"):
-                    with st.spinner("Thinking…"):
-                        try:
-                            ans = answer_question(user_input, scanned_drug)
-                        except Exception as exc:
-                            ans = {"kind": "error",
-                                   "summary": f"Something went wrong: {exc}",
-                                   "results": []}
-
-                    st.write(ans["summary"])
-                    st.caption(f"Route: `{ans['kind']}`")
-
-                    if ans["results"]:
-                        with st.expander(f"{len(ans['results'])} FDA label sources"):
-                            for i, r in enumerate(ans["results"], 1):
-                                meta = r.get("metadata", {})
-                                st.markdown(
-                                    f"**{i}. {meta.get('drug_name','?')}** — "
-                                    f"*{meta.get('section_type','?')}* "
-                                    f"(score {r.get('final_score',0):.2f})"
-                                )
-                                st.write(r["text"][:500] + "…")
-                                st.divider()
-
-                st.session_state["chat_history"].append(
-                    {"role": "assistant", "content": ans["summary"]}
-                )
+                with st.spinner("Thinking…"):
+                    try:
+                        ans = answer_question(user_input, scanned_drug)
+                    except Exception as exc:
+                        ans = {"kind": "error",
+                               "summary": f"Something went wrong: {exc}",
+                               "results": []}
+                st.session_state["chat_history"].append({
+                    "role":    "assistant",
+                    "content": ans["summary"],
+                    "route":   ans["kind"],
+                    "results": ans.get("results", []),
+                })
+                st.rerun()
 
     st.markdown('</div>', unsafe_allow_html=True)
