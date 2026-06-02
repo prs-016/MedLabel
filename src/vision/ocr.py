@@ -755,15 +755,24 @@ def run_ocr(image_path: str, packaging_type: str) -> OCRResult:
         return run_path_b(image_path)
 
     elif packaging_type == "flat":
-        return run_path_a(image_path)
+        try:
+            return run_path_a(image_path)
+        except ImportError:
+            # EasyOCR not installed (Cloud) — use xAI Vision
+            result = run_path_b(image_path)
+            result.path_used = "xai_vision_flat"
+            return result
 
     elif packaging_type == "auto":
-        from vision.detector import YOLORouter
-        router = YOLORouter()
-        if router._trained:
-            detected, _bbox, _conf = router.detect_geometry(image_path)
-            return run_ocr(image_path, detected)
-        # No trained YOLO model — use xAI Vision to classify + extract
+        try:
+            from vision.detector import YOLORouter
+            router = YOLORouter()
+            if router._trained:
+                detected, _bbox, _conf = router.detect_geometry(image_path)
+                return run_ocr(image_path, detected)
+        except ImportError:
+            pass  # ultralytics not installed on Cloud
+        # No YOLO available or no trained model — xAI Vision classifies + extracts
         return _run_auto_via_vision(image_path)
 
     else:
