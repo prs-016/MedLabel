@@ -1,5 +1,14 @@
 <div align="center">
 
+<!-- ═══════════════════════════════════════════════════════════ HEADER -->
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/hero.png">
+  <img src="docs/screenshots/hero.png" alt="MedLabel Hero" width="100%"/>
+</picture>
+
+<br/>
+
 ```
 ███╗   ███╗███████╗██████╗ ██╗      █████╗ ██████╗ ███████╗██╗
 ████╗ ████║██╔════╝██╔══██╗██║     ██╔══██╗██╔══██╗██╔════╝██║
@@ -9,21 +18,21 @@
 ╚═╝     ╚═╝╚══════╝╚═════╝ ╚══════╝╚═╝  ╚═╝╚═════╝ ╚══════╝╚══════╝
 ```
 
-**Point your phone at any medicine label. Get plain English answers instantly.**
+### Point your phone at any medicine label. Get plain English answers instantly.
 
 <br/>
 
-[![Live Demo](https://img.shields.io/badge/🚀%20LIVE%20DEMO-medlabel.streamlit.app-C8FF57?style=for-the-badge&labelColor=0d1117&color=C8FF57)](https://medlabel.streamlit.app/)
+[![Live Demo](https://img.shields.io/badge/▶%20%20LIVE%20DEMO-medlabel.streamlit.app-C8FF57?style=for-the-badge&labelColor=0d1117&color=C8FF57)](https://medlabel.streamlit.app/)
 
 <br/>
 
-![FDA](https://img.shields.io/badge/FDA%20Grounded-5%2C976%20Chunks-0466C8?style=flat-square&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0xIDE1aC0ydi02aDJ2NnptMC04aC0yVjdoMnYyeiIvPjwvc3ZnPg==)
+![FDA](https://img.shields.io/badge/FDA%20Grounded-5%2C976%20Chunks-0466C8?style=flat-square)
 ![BGE-M3](https://img.shields.io/badge/BGE--M3-Neural%20Search-7B2FBE?style=flat-square)
 ![YOLO](https://img.shields.io/badge/YOLOv11-Geometry%20Router-FF6B35?style=flat-square)
 ![ChromaDB](https://img.shields.io/badge/ChromaDB-Vector%20Store-E85D4A?style=flat-square)
 ![Cross‑Encoder](https://img.shields.io/badge/Cross--Encoder-Reranker-2EC4B6?style=flat-square)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)
-![Streamlit](https://img.shields.io/badge/Streamlit-App-FF4B4B?style=flat-square&logo=streamlit&logoColor=white)
+![Streamlit](https://img.shields.io/badge/Streamlit-Cloud-FF4B4B?style=flat-square&logo=streamlit&logoColor=white)
 
 </div>
 
@@ -31,29 +40,72 @@
 
 ---
 
-<div align="center">
+<!-- ═══════════════════════════════════════════════════════════ ABOUT -->
 
-## ⚡ What It Does
+## What is MedLabel?
 
-</div>
+MedLabel is a full-stack AI system that makes medication information accessible to everyone. Upload a photo of **any medicine packaging** — a pill bottle, cardboard box, blister strip, or prescription label — and MedLabel reads it, simplifies the instructions into plain English, and lets you ask follow-up questions like *"Can I take this with Advil?"* or *"What side effects should I watch for?"*
 
-Upload any medicine photo. MedLabel handles the rest.
-
-```
-📷 PHOTO IN  →  🔍 YOLO ROUTES  →  📝 OCR READS  →  🧠 BGE-M3 RETRIEVES  →  💬 ANSWER OUT
-```
-
-Every answer is **retrieved from 5,976 official FDA label chunks** — ranked by a cross-encoder, cited, never invented.
+Every answer is grounded in **official FDA drug label data** — retrieved, ranked, and cited — never hallucinated.
 
 <br/>
 
 ---
 
+<!-- ══════════════════════════════════════════════════ APP SCREENSHOT -->
+
+## The App
+
 <div align="center">
-
-## 🗺️ Architecture
-
+<img src="docs/screenshots/scanner.png" alt="MedLabel Scanner UI" width="90%" style="border-radius:12px"/>
+<br/>
+<sub><i>Scanner view — label type selector, upload panel, and three-tab results panel (Extracted · Simplified · Chatbot)</i></sub>
 </div>
+
+<br/>
+
+---
+
+<!-- ═══════════════════════════════════════════════════════ FEATURES -->
+
+## Features
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### 📷 Smart Scanning
+YOLO geometry detection classifies each photo as flat or cylindrical, then routes it to the right OCR pipeline automatically. No manual selection required.
+
+### 🔍 Neural Semantic Search
+BGE-M3 embeds every query into 1024-dim vectors. A cross-encoder reranker then re-scores the top candidates for precision retrieval over 5,976 FDA chunks.
+
+### 💬 Agentic Chatbot
+Three specialized tools handle every question type — dosage lookup, interaction checking, and adverse event queries. Each answer cites its FDA source chunk.
+
+</td>
+<td width="50%" valign="top">
+
+### ⚠️ Interaction Checker
+Cross-references DDInter + FDA `drug_interactions` sections. Handles drug-drug *and* drug-substance pairs (alcohol, grapefruit, caffeine). Text-scan fallback catches substances not in the drug database.
+
+### 📋 Plain-English Summary
+Medical jargon simplified to a 5th-grade reading level. The same label text a pharmacist reads, translated for anyone.
+
+### 🔒 Zero Data Storage
+No user data, scans, or queries are ever retained. Every session is fully stateless.
+
+</td>
+</tr>
+</table>
+
+<br/>
+
+---
+
+<!-- ══════════════════════════════════════════════════ ARCHITECTURE -->
+
+## Architecture
 
 ```
                     ┌──────────────────────────────┐
@@ -62,8 +114,8 @@ Every answer is **retrieved from 5,976 official FDA label chunks** — ranked by
                                    │
                                    ▼
                     ┌──────────────────────────────┐
-                    │       YOLO v11 Router        │
-                    │  flat_label / cylindrical    │  ← Roboflow-trained
+                    │        YOLO v11 Router       │  ← Roboflow-trained
+                    │   flat_label / cylindrical   │
                     └──────┬───────────────┬───────┘
                            │               │
               ┌────────────▼──┐       ┌────▼──────────────┐
@@ -75,8 +127,8 @@ Every answer is **retrieved from 5,976 official FDA label chunks** — ranked by
                                    │
                                    ▼
                     ┌──────────────────────────────┐
-                    │      BGE-M3 Embedding        │  ← 1024-dim vectors
-                    │   +  Cross-Encoder Rerank    │  ← precision retrieval
+                    │       BGE-M3 Embedding       │  ← 1024-dim vectors
+                    │   + Cross-Encoder Reranking  │  ← precision retrieval
                     └──────────────┬───────────────┘
                                    │
                ┌───────────────────┼───────────────────┐
@@ -84,7 +136,6 @@ Every answer is **retrieved from 5,976 official FDA label chunks** — ranked by
     ┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐
     │  vector_search   │ │interaction_check │ │  adverse_events  │
     │  Dosage, warnings│ │ DDInter + FDA    │ │  openFDA events  │
-    │  ingredients     │ │ cross-reference  │ │  data            │
     └────────┬─────────┘ └────────┬─────────┘ └────────┬─────────┘
              └───────────────────┬┘──────────────────────┘
                                  │
@@ -98,11 +149,9 @@ Every answer is **retrieved from 5,976 official FDA label chunks** — ranked by
 
 ---
 
-<div align="center">
+<!-- ═══════════════════════════════════════════════════ TECH STACK -->
 
-## 🛠️ Tech Stack
-
-</div>
+## Tech Stack
 
 <table>
 <tr>
@@ -148,7 +197,7 @@ Every answer is **retrieved from 5,976 official FDA label chunks** — ranked by
 |---|---|
 | Web UI | Streamlit |
 | Deployment | Streamlit Cloud |
-| Secrets | `.streamlit/secrets.toml` |
+| OCR (Cloud) | tesseract binary |
 | Language | Python 3.10+ |
 
 </td>
@@ -159,11 +208,9 @@ Every answer is **retrieved from 5,976 official FDA label chunks** — ranked by
 
 ---
 
-<div align="center">
+<!-- ═════════════════════════════════════════════════════ CHATBOT -->
 
-## 💬 The Chatbot — 3 Specialized Tools
-
-</div>
+## The Chatbot — 3 Specialized Tools
 
 <table>
 <tr>
@@ -178,7 +225,7 @@ Semantic search over FDA label chunks. Handles dosage, warnings, ingredients, an
 
 **⚠️ interaction_check**
 
-Cross-references DDInter + FDA `drug_interactions` sections. Handles drug-drug *and* drug-substance pairs (e.g. alcohol, grapefruit).
+Cross-references DDInter + FDA `drug_interactions` sections. Handles drug-drug *and* drug-substance pairs (alcohol, grapefruit, caffeine).
 
 </td>
 <td align="center" width="33%">
@@ -191,17 +238,15 @@ Pulls the most-reported reactions from openFDA's adverse event database — real
 </tr>
 </table>
 
-> **Substance fallback** — If you ask *"Can I drink alcohol with this?"*, a text-scan searches every label chunk for the substance, so nothing slips through even when it's not a named drug in the database.
+> **Substance fallback** — Asking *"Can I drink alcohol with this?"* triggers a text-scan over every label chunk for the substance, so nothing slips through even when it's not a named drug in the database.
 
 <br/>
 
 ---
 
-<div align="center">
+<!-- ══════════════════════════════════════════════════════ DATA -->
 
-## 📦 The Data
-
-</div>
+## The Data
 
 ```
 ChromaDB
@@ -225,13 +270,9 @@ Metadata filtering ensures a question about Advil **only** retrieves Advil chunk
 
 ---
 
-<div align="center">
+<!-- ═══════════════════════════════════════════════ QUICK START -->
 
-## 🚀 Quick Start
-
-</div>
-
-**Clone & run locally:**
+## Quick Start
 
 ```bash
 git clone https://github.com/prs-016/MedLabel.git
@@ -254,19 +295,15 @@ pip install -r requirements.txt
 # tesseract binary handled via packages.txt on Streamlit Cloud
 ```
 
-<br/>
-
-**Or just use the live demo →** [medlabel.streamlit.app](https://medlabel.streamlit.app/)
+**Or skip setup entirely →** [medlabel.streamlit.app](https://medlabel.streamlit.app/)
 
 <br/>
 
 ---
 
-<div align="center">
+<!-- ══════════════════════════════════════════════════ SAFETY -->
 
-## 🔒 Safety
-
-</div>
+## Safety
 
 MedLabel is an **informational tool** — not diagnostic, not prescriptive.
 
@@ -281,11 +318,9 @@ MedLabel is an **informational tool** — not diagnostic, not prescriptive.
 
 ---
 
-<div align="center">
+<!-- ═══════════════════════════════════════════════ REFERENCES -->
 
-## 📚 References
-
-</div>
+## References
 
 | Resource | Link |
 |---|---|
