@@ -92,7 +92,7 @@ class PathAOCR:
 
     def __init__(self, lang: str = "en") -> None:
         self._backend = None
-        # Try EasyOCR first
+        # Try EasyOCR first (local / full install)
         try:
             import easyocr  # type: ignore
             self._reader = easyocr.Reader([lang], verbose=False)
@@ -106,11 +106,20 @@ class PathAOCR:
             self._ocr = PaddleOCR(use_angle_cls=True, lang=lang, show_log=False)
             self._backend = "paddleocr"
             return
-        except ImportError as exc:
-            raise ImportError(
-                "No OCR backend available. "
-                "Install EasyOCR: pip install easyocr"
-            ) from exc
+        except ImportError:
+            pass
+        # Fall back to pytesseract (Cloud — no PyTorch, just tesseract binary)
+        try:
+            import pytesseract  # type: ignore
+            pytesseract.get_tesseract_version()  # raises if binary missing
+            self._backend = "pytesseract"
+            return
+        except Exception:
+            pass
+        raise ImportError(
+            "No OCR backend available. "
+            "Install one of: easyocr, pytesseract (+ tesseract binary), or paddleocr"
+        )
 
     # ── public ────────────────────────────────────────────────────────────────
 
@@ -159,6 +168,24 @@ class PathAOCR:
                     text, conf = item[1]
                     if float(conf) >= min_confidence and str(text).strip():
                         lines.append({"text": str(text).strip(), "confidence": float(conf)})
+
+        elif self._backend == "pytesseract":
+            import pytesseract  # type: ignore
+            import cv2
+            # Tesseract works best on RGB; returns full-page string, no per-word confidence
+            rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            from PIL import Image as _PILImage
+            pil_img = _PILImage.fromarray(rgb)
+            data = pytesseract.image_to_data(
+                pil_img,
+                output_type=pytesseract.Output.DICT,
+                config="--psm 6",
+            )
+            for i, text in enumerate(data["text"]):
+                text = str(text).strip()
+                conf = int(data["conf"][i])
+                if conf > 0 and text:
+                    lines.append({"text": text, "confidence": conf / 100.0})
 
         return lines
 

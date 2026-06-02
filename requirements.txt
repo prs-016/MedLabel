@@ -1,15 +1,15 @@
 # Streamlit Community Cloud deployment
-# ultralytics is NOT here — YOLO runs via Roboflow REST API instead (no local model).
-# EasyOCR is now included; it previously OOMed only when combined with ultralytics.
-# Full local stack: requirements-full.txt
+# EasyOCR/ultralytics are NOT here — both OOM the 1GB Cloud limit (PyTorch models).
+# Flat labels use pytesseract on Cloud (tiny: Python wrapper + tesseract binary via packages.txt).
+# Full local stack (EasyOCR): requirements-full.txt
 
 numpy>=1.21,<3
 pillow
 pillow-heif
 opencv-python-headless>=4.8,<5
 
-# OCR
-easyocr>=1.7.0               # Flat label OCR (no ultralytics = fits in 1GB Cloud)
+# OCR — Cloud uses pytesseract (no PyTorch; tesseract binary in packages.txt)
+pytesseract>=0.3.10
 
 # AI & LLM
 openai>=1.0.0            # xAI / Grok API client
