@@ -1,136 +1,215 @@
 <div align="center">
 
-<img src="https://img.shields.io/badge/Live%20Demo-medlabel.streamlit.app-brightgreen?style=for-the-badge&logo=streamlit&logoColor=white" alt="Live Demo"/>
-&nbsp;
-<img src="https://img.shields.io/badge/FDA--Grounded-5%2C976%20chunks-blue?style=for-the-badge" alt="FDA Data"/>
-&nbsp;
-<img src="https://img.shields.io/badge/BGE--M3-Neural%20Search-purple?style=for-the-badge" alt="BGE-M3"/>
-&nbsp;
-<img src="https://img.shields.io/badge/License-MIT-lightgrey?style=for-the-badge" alt="MIT License"/>
+```
+███╗   ███╗███████╗██████╗ ██╗      █████╗ ██████╗ ███████╗██╗
+████╗ ████║██╔════╝██╔══██╗██║     ██╔══██╗██╔══██╗██╔════╝██║
+██╔████╔██║█████╗  ██║  ██║██║     ███████║██████╔╝█████╗  ██║
+██║╚██╔╝██║██╔══╝  ██║  ██║██║     ██╔══██║██╔══██╗██╔══╝  ██║
+██║ ╚═╝ ██║███████╗██████╔╝███████╗██║  ██║██████╔╝███████╗███████╗
+╚═╝     ╚═╝╚══════╝╚═════╝ ╚══════╝╚═╝  ╚═╝╚═════╝ ╚══════╝╚══════╝
+```
 
-<br/><br/>
-
-# MedLabel
-
-### Point your phone at any medicine label. Get plain English answers instantly.
-
-**[→ Try the live demo](https://medlabel.streamlit.app/)**
+**Point your phone at any medicine label. Get plain English answers instantly.**
 
 <br/>
 
+[![Live Demo](https://img.shields.io/badge/🚀%20LIVE%20DEMO-medlabel.streamlit.app-C8FF57?style=for-the-badge&labelColor=0d1117&color=C8FF57)](https://medlabel.streamlit.app/)
+
+<br/>
+
+![FDA](https://img.shields.io/badge/FDA%20Grounded-5%2C976%20Chunks-0466C8?style=flat-square&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0xIDE1aC0ydi02aDJ2NnptMC04aC0yVjdoMnYyeiIvPjwvc3ZnPg==)
+![BGE-M3](https://img.shields.io/badge/BGE--M3-Neural%20Search-7B2FBE?style=flat-square)
+![YOLO](https://img.shields.io/badge/YOLOv11-Geometry%20Router-FF6B35?style=flat-square)
+![ChromaDB](https://img.shields.io/badge/ChromaDB-Vector%20Store-E85D4A?style=flat-square)
+![Cross‑Encoder](https://img.shields.io/badge/Cross--Encoder-Reranker-2EC4B6?style=flat-square)
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)
+![Streamlit](https://img.shields.io/badge/Streamlit-App-FF4B4B?style=flat-square&logo=streamlit&logoColor=white)
+
 </div>
 
----
-
-## What is MedLabel?
-
-MedLabel is a full-stack AI system that makes medication information accessible to everyone. Upload a photo of **any medicine packaging** — a pill bottle, cardboard box, blister strip, or prescription label — and MedLabel reads it, simplifies the instructions into plain English, and lets you ask follow-up questions like *"Can I take this with Advil?"* or *"What side effects should I watch for?"*
-
-Every answer is grounded in **official FDA drug label data** — retrieved, ranked, and cited — never hallucinated.
+<br/>
 
 ---
 
-## Features
+<div align="center">
 
-| | Feature | Description |
-|---|---|---|
-| 📷 | **Smart Scanning** | YOLO geometry detection automatically routes each photo to the right OCR pipeline |
-| 🔍 | **Neural Semantic Search** | BGE-M3 + Cross-Encoder reranking over 5,976 FDA label chunks |
-| 💬 | **Agentic Chatbot** | Three specialized tools: dosage lookup, interaction check, adverse events |
-| ⚠️ | **Interaction Checker** | Cross-references DDInter + FDA labels for drug-drug and drug-substance pairs |
-| 📋 | **Plain-English Summary** | Medical jargon simplified to a 5th-grade reading level |
-| 🔒 | **Zero Data Storage** | No user data, scans, or queries are retained |
+## ⚡ What It Does
 
----
+</div>
 
-## Architecture
+Upload any medicine photo. MedLabel handles the rest.
 
 ```
-Photo of Any Medicine Packaging
-           │
-           ▼
-    ┌──────────────┐
-    │  YOLO Router │  Classifies: flat label vs. cylindrical bottle
-    └──────┬───────┘
-           │
-    ┌──────┴──────────┐
-    │                 │
-    ▼                 ▼
-┌─────────┐    ┌──────────────┐
-│ Path A  │    │   Path B     │
-│ OpenCV  │    │   Vision     │  Both paths produce
-│ + OCR   │    │  (curved)    │  identical structured output
-└────┬────┘    └──────┬───────┘
-     └────────┬───────┘
-              │
-              ▼
-    ┌─────────────────────┐
-    │  Plain-English      │
-    │  Simplification     │
-    └──────────┬──────────┘
-               │
-    ┌──────────┴──────────┐
-    │                     │
-    ▼                     ▼
-┌──────────┐    ┌─────────────────────┐
-│ ChromaDB │    │  Agentic Chatbot    │
-│ FDA Data │◀───│  ┌───────────────┐  │
-│ DDInter  │    │  │ vector_search │  │
-│ 5,976    │    │  │ interaction   │  │
-│  chunks  │    │  │ adverse_events│  │
-└──────────┘    │  └───────────────┘  │
-                └─────────────────────┘
-                          │
-                          ▼
-                   ┌────────────┐
-                   │ Streamlit  │
-                   │    UI      │
-                   └────────────┘
+📷 PHOTO IN  →  🔍 YOLO ROUTES  →  📝 OCR READS  →  🧠 BGE-M3 RETRIEVES  →  💬 ANSWER OUT
 ```
+
+Every answer is **retrieved from 5,976 official FDA label chunks** — ranked by a cross-encoder, cited, never invented.
+
+<br/>
 
 ---
 
-## Tech Stack
+<div align="center">
 
-| Layer | Technology | Role |
-|---|---|---|
-| **Geometry Router** | YOLOv11 (Roboflow) | Classifies flat vs. cylindrical packaging |
-| **Flat OCR** | pytesseract / PaddleOCR | Extracts text from flat labels |
-| **Curved Vision** | Vision API | Reads curved bottle text natively |
-| **Embeddings** | BGE-M3 (BAAI/bge-m3) | 1024-dim neural embeddings; runs locally |
-| **Reranking** | Cross-Encoder (sentence-transformers) | Precision reranking of retrieved chunks |
-| **Vector Store** | ChromaDB | Local vector DB; FDA chunks + DDInter |
-| **Drug Data** | openFDA Drug Label API | Official FDA labeling: dosage, warnings, interactions |
-| **Interactions** | DDInter Database | Open-access drug-drug interaction data |
-| **Adverse Events** | openFDA Adverse Events API | FDA-reported adverse event summaries |
-| **Drug Normalization** | NIH RxNorm API | Brand name → Generic → RxCUI |
-| **Web Interface** | Streamlit | Upload, scan, chat, summarize |
+## 🗺️ Architecture
+
+</div>
+
+```
+                    ┌──────────────────────────────┐
+                    │     Any Medicine Photo        │
+                    └──────────────┬───────────────┘
+                                   │
+                                   ▼
+                    ┌──────────────────────────────┐
+                    │       YOLO v11 Router        │
+                    │  flat_label / cylindrical    │  ← Roboflow-trained
+                    └──────┬───────────────┬───────┘
+                           │               │
+              ┌────────────▼──┐       ┌────▼──────────────┐
+              │    Path A     │       │      Path B        │
+              │  OpenCV +     │       │   Vision API       │
+              │  pytesseract  │       │  (curved bottles)  │
+              └────────┬──────┘       └────────┬───────────┘
+                       └───────────┬───────────┘
+                                   │
+                                   ▼
+                    ┌──────────────────────────────┐
+                    │      BGE-M3 Embedding        │  ← 1024-dim vectors
+                    │   +  Cross-Encoder Rerank    │  ← precision retrieval
+                    └──────────────┬───────────────┘
+                                   │
+               ┌───────────────────┼───────────────────┐
+               ▼                   ▼                   ▼
+    ┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐
+    │  vector_search   │ │interaction_check │ │  adverse_events  │
+    │  Dosage, warnings│ │ DDInter + FDA    │ │  openFDA events  │
+    │  ingredients     │ │ cross-reference  │ │  data            │
+    └────────┬─────────┘ └────────┬─────────┘ └────────┬─────────┘
+             └───────────────────┬┘──────────────────────┘
+                                 │
+                                 ▼
+                    ┌──────────────────────────────┐
+                    │         Streamlit UI         │
+                    └──────────────────────────────┘
+```
+
+<br/>
 
 ---
 
-## The Chatbot — 3 Tools
+<div align="center">
 
-The chatbot uses semantic search + a cross-encoder reranker to retrieve the most relevant FDA label chunks, then synthesizes a grounded answer.
+## 🛠️ Tech Stack
 
-```
-vector_search       → Dosage, warnings, ingredients, general questions
-interaction_check   → "Can I take this with Advil?" — DDInter + FDA cross-reference
-adverse_events      → "What side effects have people reported?" — openFDA event data
-```
+</div>
 
-A substance text-scan fallback handles non-drug queries like *"Can I drink alcohol with this?"* — scanning all label chunks for the substance when it isn't a named drug in the database.
+<table>
+<tr>
+<td width="50%" valign="top">
+
+**Vision & OCR**
+| Component | Technology |
+|---|---|
+| Geometry Router | YOLOv11 on Roboflow |
+| Flat Labels | pytesseract + OpenCV |
+| Curved Bottles | Vision API |
+| Image I/O | Pillow + pillow-heif |
+
+</td>
+<td width="50%" valign="top">
+
+**Intelligence**
+| Component | Technology |
+|---|---|
+| Embeddings | BGE-M3 (1024-dim) |
+| Reranker | Cross-Encoder (ST) |
+| Vector Store | ChromaDB |
+| Drug IDs | NIH RxNorm API |
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+**Data Sources**
+| Source | Content |
+|---|---|
+| openFDA Labels | Dosage, warnings, interactions |
+| DDInter | Drug-drug interaction pairs |
+| openFDA Events | Adverse event reports |
+| On-demand | Auto-ingest unknown drugs |
+
+</td>
+<td width="50%" valign="top">
+
+**Application**
+| Component | Technology |
+|---|---|
+| Web UI | Streamlit |
+| Deployment | Streamlit Cloud |
+| Secrets | `.streamlit/secrets.toml` |
+| Language | Python 3.10+ |
+
+</td>
+</tr>
+</table>
+
+<br/>
 
 ---
 
-## Data
+<div align="center">
 
-- **5,976 FDA label chunks** across 57+ drugs — embedded with BGE-M3 and stored in ChromaDB
-- **DDInter** drug-drug interaction pairs with severity + management recommendations
-- **On-demand ingestion** — drugs not in the starter set are fetched from openFDA, chunked, embedded, and cached automatically on first query
+## 💬 The Chatbot — 3 Specialized Tools
 
-Each chunk carries metadata for precise filtering:
+</div>
 
-```python
+<table>
+<tr>
+<td align="center" width="33%">
+
+**🔍 vector_search**
+
+Semantic search over FDA label chunks. Handles dosage, warnings, ingredients, and general questions. BGE-M3 retrieves, cross-encoder reranks.
+
+</td>
+<td align="center" width="33%">
+
+**⚠️ interaction_check**
+
+Cross-references DDInter + FDA `drug_interactions` sections. Handles drug-drug *and* drug-substance pairs (e.g. alcohol, grapefruit).
+
+</td>
+<td align="center" width="33%">
+
+**🩺 adverse_events**
+
+Pulls the most-reported reactions from openFDA's adverse event database — real-world post-market safety data.
+
+</td>
+</tr>
+</table>
+
+> **Substance fallback** — If you ask *"Can I drink alcohol with this?"*, a text-scan searches every label chunk for the substance, so nothing slips through even when it's not a named drug in the database.
+
+<br/>
+
+---
+
+<div align="center">
+
+## 📦 The Data
+
+</div>
+
+```
+ChromaDB
+├── 5,976 FDA label chunks  (57+ drugs, BGE-M3 embedded)
+├── DDInter interaction pairs  (severity + management)
+└── On-demand ingestion  (new drugs auto-fetched from openFDA)
+
+Each chunk:
 {
   "drug_name":    "ibuprofen",
   "brand_name":   "Advil",
@@ -140,68 +219,95 @@ Each chunk carries metadata for precise filtering:
 }
 ```
 
+Metadata filtering ensures a question about Advil **only** retrieves Advil chunks — never Tylenol data by accident.
+
+<br/>
+
 ---
 
-## Running Locally
+<div align="center">
 
-**Prerequisites:** Python 3.10–3.12, tesseract binary
+## 🚀 Quick Start
+
+</div>
+
+**Clone & run locally:**
 
 ```bash
 git clone https://github.com/prs-016/MedLabel.git
 cd MedLabel
 
-pip install -r requirements-full.txt   # full local stack (EasyOCR etc.)
+# Full local stack (EasyOCR + all models)
+pip install -r requirements-full.txt
 
-# Set secrets
+# Configure secrets
 cp .env.example .env
-# Add XAI_API_KEY, GEMINI_API_KEY, ROBOFLOW_API_KEY
+# → Add XAI_API_KEY, GEMINI_API_KEY, ROBOFLOW_API_KEY
 
 streamlit run app/streamlit_app.py
 ```
 
-**Cloud / lightweight install** (no PyTorch OCR models):
+**Lightweight install** (Cloud-compatible, no PyTorch):
 
 ```bash
 pip install -r requirements.txt
+# tesseract binary handled via packages.txt on Streamlit Cloud
 ```
 
----
+<br/>
 
-## Deployment
+**Or just use the live demo →** [medlabel.streamlit.app](https://medlabel.streamlit.app/)
 
-The live demo runs on **Streamlit Community Cloud** using the lightweight `requirements.txt` (no PyTorch, no EasyOCR — uses tesseract via `packages.txt`).
-
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://medlabel.streamlit.app/)
+<br/>
 
 ---
 
-## Safety
+<div align="center">
 
-MedLabel is an informational tool — not a diagnostic or prescribing system.
+## 🔒 Safety
 
-- Answers use **only retrieved FDA data**. If the answer isn't in context, the chatbot refers to a pharmacist.
-- Requests to exceed labeled doses are refused with the FDA warning.
-- Low-confidence OCR reads are flagged visually.
-- No user data or scans are stored.
+</div>
+
+MedLabel is an **informational tool** — not diagnostic, not prescriptive.
+
+- ✅ Answers cite only retrieved FDA data — never hallucinated
+- ✅ Requests to exceed labeled doses are refused with the FDA warning
+- ✅ Low-confidence OCR reads are flagged visually
+- ✅ Zero user data stored — no scans, no queries, no logs
 
 > ⚠️ Always verify with the physical label or your pharmacist. This is not a substitute for professional medical advice.
 
+<br/>
+
 ---
 
-## References
+<div align="center">
+
+## 📚 References
+
+</div>
 
 | Resource | Link |
 |---|---|
 | openFDA Drug Labels | https://open.fda.gov/apis/drug/label/ |
 | openFDA Adverse Events | https://open.fda.gov/apis/drug/event/ |
 | NIH RxNorm API | https://lhncbc.nlm.nih.gov/RxNav/APIs/RxNormAPIs.html |
-| DDInter Database | [Kaggle](https://www.kaggle.com/datasets/thedevastator/ddinter-dataset-drug-drug-interactions) · [Zenodo](https://zenodo.org/records/5549420) |
+| DDInter (Kaggle) | https://www.kaggle.com/datasets/thedevastator/ddinter-dataset-drug-drug-interactions |
+| DDInter (Zenodo) | https://zenodo.org/records/5549420 |
 | BGE-M3 | https://huggingface.co/BAAI/bge-m3 |
 | ChromaDB | https://docs.trychroma.com/ |
 | Roboflow | https://roboflow.com/ |
 
+<br/>
+
 ---
 
 <div align="center">
-  <sub>Built by the MedLabel team · UC San Diego</sub>
+
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://medlabel.streamlit.app/)
+
+<br/>
+
+**Built by the MedLabel team · UC San Diego**
+
 </div>
