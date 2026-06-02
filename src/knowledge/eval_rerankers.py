@@ -39,7 +39,11 @@ MODELS = {
     },
     "interaction_check": {
         "path": os.path.join(ROOT_DIR, "models", "medlabel_reranker"),
-        "data": os.path.join(ROOT_DIR, "data", "training_pairs.json"),
+        "data": (
+            os.path.join(ROOT_DIR, "data", "interaction_pairs.json")
+            if os.path.isfile(os.path.join(ROOT_DIR, "data", "interaction_pairs.json"))
+            else os.path.join(ROOT_DIR, "data", "training_pairs.json")
+        ),
     },
 }
 

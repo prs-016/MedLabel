@@ -276,20 +276,20 @@ def answer_question(question: str, scanned_drug: str) -> dict:
     if _is_interaction_question(q, scanned_drug):
         drug_a, drug_b = _resolve_interaction_pair(question, scanned_drug)
         if drug_a and drug_b:
-            results = interaction_check(drug_a, drug_b, top_n=5)
+            results = interaction_check(drug_a, drug_b, question=question, top_n=3)
             kind    = f"interaction_check({drug_a}, {drug_b})"
         elif drug_a:
-            results = interaction_check(drug_a, top_n=5)
+            results = interaction_check(drug_a, question=question, top_n=3)
             kind    = f"interaction_check({drug_a})"
         else:
-            results = vector_search(question, top_n=5)
+            results = vector_search(question, top_n=3)
             kind    = "vector_search (interaction question, no drugs identified)"
         if not results and drug_a:
             fallback_q = f"{question} {drug_a}"
             if drug_b:
                 fallback_q = f"{fallback_q} {drug_b}"
             results = vector_search(
-                fallback_q, drug_name=drug_a, top_n=5
+                fallback_q, drug_name=drug_a, top_n=3
             )
             kind = f"vector_search(fallback, {drug_a}" + (
                 f", {drug_b})" if drug_b else ")"
@@ -297,10 +297,10 @@ def answer_question(question: str, scanned_drug: str) -> dict:
     # 2. adverse-event / safety question
     elif any(w in q for w in _ADVERSE_WORDS):
         if query_drug:
-            results = adverse_events(query_drug, reaction_hint=question, top_n=5)
+            results = adverse_events(query_drug, reaction_hint=question, top_n=3)
             kind    = f"adverse_events({query_drug})"
         else:
-            results = vector_search(question, top_n=5)
+            results = vector_search(question, top_n=3)
             kind    = "vector_search (no scanned drug)"
     # 3. general semantic search
     else:
@@ -313,7 +313,7 @@ def answer_question(question: str, scanned_drug: str) -> dict:
         elif any(w in q for w in ("indicated", "indication", "used for", "what is it for")):
             search_q = f"{question} indications and usage"
         results = vector_search(
-            search_q, drug_name=query_drug or None, top_n=5
+            search_q, drug_name=query_drug or None, top_n=3
         )
         kind = f"vector_search(drug={query_drug or 'any'})"
 

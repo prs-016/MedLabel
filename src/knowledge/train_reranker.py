@@ -8,7 +8,11 @@ from sentence_transformers import CrossEncoder, InputExample
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, "..", ".."))
 
-DATA_PATH = os.path.join(ROOT_DIR, "data", "training_pairs.json")
+# Interaction-specific pairs (generate_interaction_data.py). Falls back to the
+# legacy generic training_pairs.json only if the new file is absent.
+DATA_PATH = os.path.join(ROOT_DIR, "data", "interaction_pairs.json")
+if not os.path.isfile(DATA_PATH):
+    DATA_PATH = os.path.join(ROOT_DIR, "data", "training_pairs.json")
 MODEL_OUTPUT_PATH = os.path.join(ROOT_DIR, "models", "medlabel_reranker")
 
 def train_custom_reranker():

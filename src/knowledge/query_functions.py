@@ -59,10 +59,21 @@ def _make_finetuned_reranker(
     model_path: str, label: str
 ) -> TwoStageReranker:
     """Build a TwoStageReranker on a fine-tuned cross-encoder if present,
-    else fall back to the base reranker so the function still works."""
+    else fall back to the base reranker so the function still works.
+
+    The cross-encoder here is fine-tuned for this specific function, so we
+    let it dominate the final score (0.8) and keep the generic BGE stage as a
+    light prior (0.2) instead of the default 0.6/0.4 split used by the base
+    reranker. This stops the untuned BGE (or its offline distance proxy) from
+    diluting the task-specific signal.
+    """
     if os.path.isdir(model_path):
         logger.info("%s: using fine-tuned reranker at %s", label, model_path)
-        return TwoStageReranker(cross_encoder_model=model_path)
+        return TwoStageReranker(
+            cross_encoder_model=model_path,
+            bge_weight=0.2,
+            cross_weight=0.8,
+        )
     logger.warning(
         "%s: fine-tuned reranker not found at %s -- falling back to base "
         "cross-encoder.", label, model_path
@@ -426,6 +437,7 @@ def interaction_check(
     drug_a:       str,
     drug_b:       Optional[str] = None,
     *,
+    question:     Optional[str] = None,
     min_severity: int           = 0,
     top_n:        int           = 5,
     n_fetch:      int           = 30,
@@ -439,6 +451,10 @@ def interaction_check(
     drug_a       : primary drug  e.g. "warfarin"
     drug_b       : optional second drug  e.g. "aspirin"
                    None -> all interactions for drug_a
+    question     : the user's raw question  e.g. "can I take this with alcohol?"
+                   Folded into the rerank query so the cross-encoder can
+                   prioritise the chunk that actually answers it (e.g. the
+                   alcohol/liver warning) instead of a generic warnings section.
     min_severity : 0=any  1=Minor  2=Moderate  3=Major
     top_n        : results to return
     n_fetch      : raw ChromaDB fetch count before reranking
@@ -452,7 +468,14 @@ def interaction_check(
     >>> results = interaction_check("warfarin", "aspirin", min_severity=2)
     >>> results = interaction_check("warfarin", min_severity=3)
     """
-    if drug_b:
+    hint = (question or "").strip()
+    if hint:
+        # The user's own words drive relevance; keep only the drug name(s) as
+        # context so generic "interactions/warnings" boilerplate doesn't pull
+        # off-topic sections to the top.
+        drugs = f"{drug_a} {drug_b}" if drug_b else drug_a
+        query = f"{hint} {drugs}"
+    elif drug_b:
         query = (
             f"{drug_a} {drug_b} drug interaction contraindications "
             "warnings combining medicines"

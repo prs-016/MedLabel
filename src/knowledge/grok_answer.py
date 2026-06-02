@@ -63,7 +63,7 @@ def synthesize_answer(
         )
 
     context_parts = []
-    for i, c in enumerate(chunks[:5], 1):
+    for i, c in enumerate(chunks[:3], 1):
         meta = c.get("metadata") or {}
         section = meta.get("section_type", "label")
         drug = meta.get("drug_name", "")
