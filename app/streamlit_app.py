@@ -1053,7 +1053,7 @@ if not _show_scanner:
   <div class="ml-nav-links">
     <a href="#" data-scrollto="ml-features">Features</a>
     <a href="#" data-scrollto="ml-how">How it works</a>
-    <a href="#" data-scrollto="ml-safety">Disclaimer</a>
+    <a href="#" data-scrollto="ml-safety">Get Started</a>
   </div>
 </nav>""", unsafe_allow_html=True)
 
