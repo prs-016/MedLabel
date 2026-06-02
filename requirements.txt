@@ -1,11 +1,15 @@
 # Streamlit Community Cloud deployment
-# EasyOCR + ultralytics are NOT here — they load large PyTorch models that OOM
-# the 1GB Cloud limit. All OCR on Cloud routes through xAI Vision API instead.
+# ultralytics is NOT here — YOLO runs via Roboflow REST API instead (no local model).
+# EasyOCR is now included; it previously OOMed only when combined with ultralytics.
 # Full local stack: requirements-full.txt
 
 numpy>=1.21,<3
 pillow
 pillow-heif
+opencv-python-headless>=4.8,<5
+
+# OCR
+easyocr>=1.7.0               # Flat label OCR (no ultralytics = fits in 1GB Cloud)
 
 # AI & LLM
 openai>=1.0.0            # xAI / Grok API client

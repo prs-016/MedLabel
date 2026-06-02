@@ -25,9 +25,6 @@ FlagEmbedding>=1.2.0              # BGE-M3 FlagModel + FlagReranker (optional bu
 beautifulsoup4>=4.12.0
 requests>=2.31.0
 
-# Roboflow hosted inference (optional router)
-inference-sdk>=0.9.0
-
 # Application
 streamlit>=1.30.0        # UI Dashboard
 python-dotenv            # API key management

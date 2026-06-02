@@ -184,9 +184,11 @@ def run_path_a(image_path: str) -> OCRResult:
     lines = ocr.run(img, preprocess=True)
 
     # ── No text at all ────────────────────────────────────────────────────────
+    path_label = ocr._backend  # "easyocr" or "paddleocr"
+
     if not lines:
         return OCRResult(
-            path_used="paddle_ocr",
+            path_used=path_label,
             confidence=0.0,
             hallucination_flags=["no_text_detected", "reupload_required"],
         )
@@ -202,7 +204,7 @@ def run_path_a(image_path: str) -> OCRResult:
         )
         return OCRResult(
             raw_text=all_text,
-            path_used="paddle_ocr",
+            path_used=path_label,
             confidence=mean_conf,
             hallucination_flags=["confidence_too_low", "reupload_required"],
         )
@@ -218,7 +220,7 @@ def run_path_a(image_path: str) -> OCRResult:
         directions=         sections["directions"],
         expiry_date=        sections["expiry_date"],
         raw_text=           all_text,
-        path_used=          "paddle_ocr",
+        path_used=          path_label,
         confidence=         mean_conf,
     )
 
@@ -770,9 +772,9 @@ def run_ocr(image_path: str, packaging_type: str) -> OCRResult:
             if router._trained:
                 detected, _bbox, _conf = router.detect_geometry(image_path)
                 return run_ocr(image_path, detected)
-        except ImportError:
-            pass  # ultralytics not installed on Cloud
-        # No YOLO available or no trained model — xAI Vision classifies + extracts
+        except Exception:
+            pass  # inference-sdk missing or Roboflow unreachable
+        # Roboflow unavailable — xAI Vision classifies geometry + extracts text
         return _run_auto_via_vision(image_path)
 
     else:
