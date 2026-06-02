@@ -429,6 +429,57 @@ def vector_search(
     return _format_results(ranked)
 
 
+def _text_scan_for_substance(
+    drug_a: str,
+    substance: str,
+    path: str,
+    *,
+    top_n: int = 5,
+) -> list["RankedChunk"]:
+    """
+    Fetch all stored chunks for drug_a and return those that textually
+    mention substance (e.g. 'alcohol').  Used when substance is not a
+    drug in the DB so normal drug-filter retrieval misses it.
+    """
+    emb = _get_embedder(path)
+    drug_filter = _resolve_drug_filter(drug_a, path)
+    if not drug_filter:
+        return []
+
+    substance_lower = substance.lower()
+    # Pull up to 100 chunks for drug_a across all sections
+    raw = emb.query(
+        f"{drug_a} {substance} warnings interactions risk precautions",
+        n_results=100,
+        where=drug_filter,
+    )
+    hits = [c for c in raw if substance_lower in c["text"].lower()]
+    if not hits:
+        return []
+
+    # Convert to RankedChunk and score via cross-encoder
+    from knowledge.reranker import RankedChunk
+    query_str = f"{drug_a} {substance} interaction warnings"
+    chunks_as_rc = [
+        RankedChunk(
+            text=c["text"],
+            metadata=c["metadata"],
+            distance=c["distance"],
+            bge_score=0.0,
+            cross_score=0.0,
+            hit_count=0,
+            final_score=0.0,
+        )
+        for c in hits
+    ]
+    reranker = _get_interaction_reranker()
+    ranked = reranker.rerank(query=query_str, chunks=[
+        {"text": rc.text, "metadata": rc.metadata, "distance": rc.distance}
+        for rc in chunks_as_rc
+    ], top_n=top_n)
+    return ranked
+
+
 # ---------------------------------------------------------------------------
 # 2. interaction_check
 # ---------------------------------------------------------------------------
@@ -468,6 +519,13 @@ def interaction_check(
     >>> results = interaction_check("warfarin", "aspirin", min_severity=2)
     >>> results = interaction_check("warfarin", min_severity=3)
     """
+    # Ensure drug_a is the one with DB entries; swap if drug_b is the known drug.
+    if drug_b:
+        a_names = _matching_drug_names(drug_a)
+        b_names = _matching_drug_names(drug_b)
+        if not a_names and b_names:
+            drug_a, drug_b = drug_b, drug_a
+
     hint = (question or "").strip()
     if hint:
         # The user's own words drive relevance; keep only the drug name(s) as
@@ -567,6 +625,13 @@ def interaction_check(
             reranker=ic_reranker,
         )
         ranked = _dedupe_ranked(ranked + extra)
+
+    # If drug_b has no DB entry (e.g. "alcohol", "grapefruit"), do a text-scan
+    # across all drug_a chunks to surface mentions of the substance.
+    if drug_b and not _matching_drug_names(drug_b, path):
+        text_hits = _text_scan_for_substance(drug_a, drug_b, path, top_n=top_n)
+        if text_hits:
+            ranked = _dedupe_ranked(text_hits + ranked)[:top_n]
 
     return _format_results(ranked[:top_n])
 

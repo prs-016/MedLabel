@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 280" width="1200" height="280">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0d1117"/>
+      <stop offset="100%" style="stop-color:#111820"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#C8FF57"/>
+      <stop offset="100%" style="stop-color:#a8e040"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="280" fill="url(#bg)"/>
+
+  <!-- Subtle grid lines -->
+  <g stroke="#1e2530" stroke-width="1" opacity="0.6">
+    <line x1="0" y1="56" x2="1200" y2="56"/>
+    <line x1="0" y1="112" x2="1200" y2="112"/>
+    <line x1="0" y1="168" x2="1200" y2="168"/>
+    <line x1="0" y1="224" x2="1200" y2="224"/>
+    <line x1="240" y1="0" x2="240" y2="280"/>
+    <line x1="480" y1="0" x2="480" y2="280"/>
+    <line x1="720" y1="0" x2="720" y2="280"/>
+    <line x1="960" y1="0" x2="960" y2="280"/>
+  </g>
+
+  <!-- Left accent bar -->
+  <rect x="0" y="0" width="5" height="280" fill="url(#accent)"/>
+
+  <!-- Neon green glow orb top-right -->
+  <circle cx="1050" cy="60" r="120" fill="#C8FF57" opacity="0.04"/>
+  <circle cx="1050" cy="60" r="70" fill="#C8FF57" opacity="0.05"/>
+
+  <!-- Logo box -->
+  <rect x="60" y="90" width="52" height="52" rx="10" fill="#C8FF57"/>
+  <text x="86" y="123" font-family="monospace" font-size="26" font-weight="900" fill="#0d1117" text-anchor="middle">+</text>
+
+  <!-- MedLabel wordmark -->
+  <text x="126" y="120" font-family="'Arial Black', Arial, sans-serif" font-size="38" font-weight="900" fill="#ffffff" letter-spacing="-1">Med</text>
+  <text x="201" y="120" font-family="'Arial Black', Arial, sans-serif" font-size="38" font-weight="900" fill="#C8FF57" letter-spacing="-1" filter="url(#glow)">Label</text>
+
+  <!-- Tagline -->
+  <text x="126" y="148" font-family="Arial, sans-serif" font-size="14" fill="#6e7681" letter-spacing="1">MEDICINE LABEL INTELLIGENCE</text>
+
+  <!-- Divider line -->
+  <line x1="60" y1="168" x2="540" y2="168" stroke="#1e2530" stroke-width="1"/>
+
+  <!-- Stat pills -->
+  <!-- 5,976 FDA chunks -->
+  <rect x="60" y="184" width="145" height="30" rx="15" fill="#0d2a1a" stroke="#1a4a2a" stroke-width="1"/>
+  <text x="132" y="204" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="#C8FF57" text-anchor="middle">5,976 FDA CHUNKS</text>
+
+  <!-- BGE-M3 -->
+  <rect x="214" y="184" width="100" height="30" rx="15" fill="#1a1040" stroke="#2a1a60" stroke-width="1"/>
+  <text x="264" y="204" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="#a78bfa" text-anchor="middle">BGE-M3</text>
+
+  <!-- YOLO -->
+  <rect x="323" y="184" width="80" height="30" rx="15" fill="#1a1500" stroke="#3a3000" stroke-width="1"/>
+  <text x="363" y="204" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="#facc15" text-anchor="middle">YOLOv11</text>
+
+  <!-- ChromaDB -->
+  <rect x="412" y="184" width="100" height="30" rx="15" fill="#1a0a0a" stroke="#3a1a1a" stroke-width="1"/>
+  <text x="462" y="204" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="#f87171" text-anchor="middle">ChromaDB</text>
+
+  <!-- Right side tagline -->
+  <text x="1140" y="114" font-family="'Arial Black', Arial, sans-serif" font-size="28" font-weight="900" fill="#1e2530" text-anchor="end">POINT. SCAN.</text>
+  <text x="1140" y="150" font-family="'Arial Black', Arial, sans-serif" font-size="28" font-weight="900" fill="#C8FF57" text-anchor="end" filter="url(#glow)">UNDERSTAND.</text>
+
+  <!-- Bottom border -->
+  <rect x="0" y="276" width="1200" height="4" fill="url(#accent)" opacity="0.6"/>
+</svg>

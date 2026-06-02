@@ -1,303 +1,333 @@
-# MedLabel — Intelligent Medicine Label Scanner & Agentic Chatbot
+<div align="center">
 
-> **Difficulty:** Intermediate–Advanced · **Team Size:** 4 Students · **Duration:** 7 Weeks
-> **Led by:** Prakhar
+<img src="docs/screenshots/banner.svg" alt="MedLabel" width="100%"/>
 
----
+<br/>
 
-## What Is MedLabel?
+[![Live Demo](https://img.shields.io/badge/▶%20%20LIVE%20DEMO-medlabel.streamlit.app-C8FF57?style=for-the-badge&labelColor=0d1117&color=C8FF57)](https://medlabel.streamlit.app/)
 
-MedLabel is a full-stack AI system that makes medication information accessible to everyone. Point your phone at **any medicine packaging** — a pill bottle, cardboard box, blister strip, cream tube, or prescription label — and MedLabel reads it, simplifies the instructions into plain English, and lets you chat with an AI assistant to ask follow-up questions like *"Can I take this with Advil?"* or *"What's the dose for my 8-year-old?"*
+<br/>
 
-The AI assistant is powered by a **vector database of official FDA drug labels**, so every answer is grounded in real, cited medical data — never hallucinated.
+![FDA](https://img.shields.io/badge/FDA%20Grounded-5%2C976%20Chunks-0466C8?style=flat-square)
+![BGE-M3](https://img.shields.io/badge/BGE--M3-Neural%20Search-7B2FBE?style=flat-square)
+![YOLO](https://img.shields.io/badge/YOLOv11-Geometry%20Router-FF6B35?style=flat-square)
+![ChromaDB](https://img.shields.io/badge/ChromaDB-Vector%20Store-E85D4A?style=flat-square)
+![Cross‑Encoder](https://img.shields.io/badge/Cross--Encoder-Reranker-2EC4B6?style=flat-square)
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)
+![Streamlit](https://img.shields.io/badge/Streamlit-Cloud-FF4B4B?style=flat-square&logo=streamlit&logoColor=white)
 
----
+</div>
 
-## The Core Idea: A YOLO-Routed Hybrid Pipeline
+<br/>
 
-Different medicine packaging has different geometry. MedLabel uses **YOLO as a router** to pick the right OCR tool for each format automatically:
+<img src="docs/screenshots/divider.svg" width="100%"/>
 
-| Packaging | Examples | Path | Tool |
-|---|---|---|---|
-| **Flat** | Cardboard boxes, blister strips, prescription labels, cream tubes | Path A | YOLO + OpenCV + PaddleOCR |
-| **Cylindrical** | Pill bottles, syrup bottles, spray bottles | Path B | Gemini Vision AI |
+<br/>
 
-Both paths produce identical structured output. Everything downstream — Gemini simplification, RxNorm normalization, ChromaDB retrieval, the LangChain chatbot — is shared.
+## 💊 What is MedLabel?
 
----
+MedLabel is a full-stack AI system that makes medication information accessible to everyone. Upload a photo of **any medicine packaging** — a pill bottle, cardboard box, blister strip, or prescription label — and MedLabel reads it, simplifies the instructions into plain English, and lets you ask follow-up questions like *"Can I take this with Advil?"* or *"What side effects should I watch for?"*
 
-## System Architecture
+Every answer is grounded in **official FDA drug label data** — retrieved, ranked, and cited — never hallucinated.
+
+<br/>
+
+<img src="docs/screenshots/divider.svg" width="100%"/>
+
+<br/>
+
+## 📸 The App
+
+<div align="center">
+<img src="docs/screenshots/hero.png" alt="MedLabel Landing Page" width="90%"/>
+<br/><sub>Landing page — dark theme with neon green accent</sub>
+<br/><br/>
+<img src="docs/screenshots/scanner.png" alt="MedLabel Scanner UI" width="90%"/>
+<br/><sub>Scanner — label type selector · upload · three-tab results panel</sub>
+</div>
+
+<br/>
+
+<img src="docs/screenshots/divider.svg" width="100%"/>
+
+<br/>
+
+## ✨ Features
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+**📷 Smart Scanning**
+YOLO geometry detection classifies each photo as flat or cylindrical and routes it to the right OCR pipeline automatically.
+
+**🔍 Neural Semantic Search**
+BGE-M3 embeds every query into 1024-dim vectors. A cross-encoder reranker re-scores the top candidates for precision retrieval over 5,976 FDA chunks.
+
+**💬 Agentic Chatbot**
+Three specialized tools handle every question type — dosage lookup, interaction checking, and adverse event queries. Each answer cites its FDA source chunk.
+
+</td>
+<td width="50%" valign="top">
+
+**⚠️ Interaction Checker**
+Cross-references DDInter + FDA `drug_interactions` sections. Handles drug-drug *and* drug-substance pairs (alcohol, grapefruit, caffeine).
+
+**📋 Plain-English Summary**
+Medical jargon simplified to a 5th-grade reading level — the same label text a pharmacist reads, translated for anyone.
+
+**🔒 Zero Data Storage**
+No user data, scans, or queries are ever retained. Every session is fully stateless.
+
+</td>
+</tr>
+</table>
+
+<br/>
+
+<img src="docs/screenshots/divider.svg" width="100%"/>
+
+<br/>
+
+## 🗺️ Architecture
 
 ```
-USER: Photo of Any Medicine Packaging
-           │
-           ▼
-    ┌──────────────┐
-    │  YOLOv11     │  Detects label region AND classifies geometry
-    │  ROUTER      │  Class 0: flat_label / Class 1: cylindrical
-    └──────┬───────┘
-           │
-    ┌──────┴──────┐
-    │flat         │cylindrical
-    ▼             ▼
-┌────────┐   ┌──────────────┐
-│OpenCV  │   │Gemini 2.0    │     Both paths output the same
-│+Paddle │   │Flash (Vision)│ ──▶ structured JSON
-│OCR     │   │              │
-└────────┘   └──────────────┘
-           │
-           ▼
-    ┌──────────────────────────────────────────┐
-    │  GEMINI — Simplify to Plain English      │
-    │  RxNorm — Brand Name → Generic → RxCUI  │
-    └──────────────────┬───────────────────────┘
-                       │
-           ┌───────────┴────────────┐
-           ▼                        ▼
-    ┌─────────────┐       ┌──────────────────────┐
-    │  ChromaDB   │       │  LangChain Agent     │
-    │  Vector DB  │◀──────│  3 Tools:            │
-    │  FDA Labels │       │  1. vector_search    │
-    │  DDInter    │       │  2. interaction_check│
-    │  User Scans │       │  3. adverse_events   │
-    └─────────────┘       └──────────┬───────────┘
-                                     ▼
-                            ┌────────────────┐
-                            │  Streamlit UI  │
-                            └────────────────┘
+                    ┌──────────────────────────────┐
+                    │     Any Medicine Photo        │
+                    └──────────────┬───────────────┘
+                                   │
+                                   ▼
+                    ┌──────────────────────────────┐
+                    │        YOLO v11 Router       │  ← Roboflow-trained
+                    │   flat_label / cylindrical   │
+                    └──────┬───────────────┬───────┘
+                           │               │
+              ┌────────────▼──┐       ┌────▼──────────────┐
+              │    Path A     │       │      Path B        │
+              │  OpenCV +     │       │   Vision API       │
+              │  pytesseract  │       │  (curved bottles)  │
+              └────────┬──────┘       └────────┬───────────┘
+                       └───────────┬───────────┘
+                                   │
+                                   ▼
+                    ┌──────────────────────────────┐
+                    │       BGE-M3 Embedding       │  ← 1024-dim vectors
+                    │   + Cross-Encoder Reranking  │  ← precision retrieval
+                    └──────────────┬───────────────┘
+                                   │
+               ┌───────────────────┼───────────────────┐
+               ▼                   ▼                   ▼
+    ┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐
+    │  vector_search   │ │interaction_check │ │  adverse_events  │
+    │  Dosage, warnings│ │ DDInter + FDA    │ │  openFDA events  │
+    └────────┬─────────┘ └────────┬─────────┘ └────────┬─────────┘
+             └───────────────────┬┘──────────────────────┘
+                                 │
+                                 ▼
+                    ┌──────────────────────────────┐
+                    │         Streamlit UI         │
+                    └──────────────────────────────┘
 ```
 
----
+<br/>
 
-## Tech Stack
+<img src="docs/screenshots/divider.svg" width="100%"/>
 
-| Layer | Tool | Purpose |
-|---|---|---|
-| **Packaging Router** | YOLOv11 (Ultralytics) | Detect label AND classify: flat vs. cylindrical |
-| **Flat Preprocessing** | OpenCV | CLAHE contrast, adaptive thresholding, glare reduction |
-| **Flat OCR** | PaddleOCR | Extract text from flat labels with per-line confidence |
-| **Cylindrical Vision** | Gemini 2.0 Flash (Vision) | Read curved bottle text natively, returns structured JSON |
-| **Structured Extraction** | Gemini 2.0 Flash | Parse PaddleOCR text → JSON fields (flat path) |
-| **Text Simplification** | Gemini 2.0 Flash | Medical jargon → 5th-grade plain English |
-| **Drug Normalization** | NIH RxNorm API | Brand name → Generic → RxCUI (standardized drug ID) |
-| **Vector Database** | ChromaDB | Local vector store; FDA chunks + DDInter data |
-| **Embeddings** | BGE-M3 (BAAI/bge-m3) | Text → 1024-dim vectors; runs locally |
-| **Agent Framework** | LangChain | Orchestrates 3-tool agentic reasoning |
-| **Drug Data** | openFDA Drug Label API | Official FDA labeling: dosage, warnings, interactions |
-| **Drug Interactions** | DDInter Database (CSV) | Open-access DDI data with severity + management info |
-| **Adverse Events** | openFDA Adverse Events API | FDA-reported adverse event summaries |
-| **Web Interface** | Streamlit | Dashboard: upload, results, confidence UI, chat |
+<br/>
 
----
+## 🛠️ Tech Stack
 
-## Data Sources & APIs
+<table>
+<tr>
+<td width="50%" valign="top">
 
-### openFDA (Primary Knowledge Source)
-- Drug Labels: `https://api.fda.gov/drug/label.json` — dosage, warnings, interactions, ingredients
-- Adverse Events: `https://api.fda.gov/drug/event.json` — reported adverse drug events
-- Rate limit: 240 req/min, 120K req/day (free API key)
+**Vision & OCR**
+| Component | Technology |
+|---|---|
+| Geometry Router | ![YOLO](https://img.shields.io/badge/YOLOv11-FF6B35?style=flat-square) Roboflow |
+| Flat Labels | pytesseract + OpenCV |
+| Curved Bottles | Vision API |
+| Image I/O | Pillow + pillow-heif |
 
-### NIH RxNorm (Drug Name Normalization)
-- `https://rxnav.nlm.nih.gov/REST/rxcui.json?name={drug}` — brand → generic → RxCUI
+</td>
+<td width="50%" valign="top">
 
-> ⚠️ The NIH RxNav **Drug Interaction API was discontinued in January 2024.** MedLabel uses openFDA label drug_interactions fields + DDInter for interaction data instead.
+**Intelligence**
+| Component | Technology |
+|---|---|
+| Embeddings | ![BGE-M3](https://img.shields.io/badge/BGE--M3-7B2FBE?style=flat-square) 1024-dim |
+| Reranker | Cross-Encoder (ST) |
+| Vector Store | ![ChromaDB](https://img.shields.io/badge/ChromaDB-E85D4A?style=flat-square) |
+| Drug IDs | NIH RxNorm API |
 
-### DDInter (Drug-Drug Interactions)
-- **Primary Source (Kaggle Mirror):** [https://www.kaggle.com/datasets/thedevastator/ddinter-dataset-drug-drug-interactions](https://www.kaggle.com/datasets/thedevastator/ddinter-dataset-drug-drug-interactions) — *Use this if the official site has SSL/certificate issues.*
-- **Secondary Source (Zenodo):** [https://zenodo.org/records/5549420](https://zenodo.org/records/5549420)
-- **Official Site:** [https://ddinter2.scbdd.com](https://ddinter2.scbdd.com) — *Main reference site for data schema.*
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
 
----
+**Data Sources**
+| Source | Content |
+|---|---|
+| ![FDA](https://img.shields.io/badge/openFDA-0466C8?style=flat-square) Labels | Dosage, warnings, interactions |
+| DDInter | Drug-drug interaction pairs |
+| openFDA Events | Adverse event reports |
+| On-demand | Auto-ingest unknown drugs |
 
-## What Gets Stored in ChromaDB
+</td>
+<td width="50%" valign="top">
 
-Every text chunk in the vector database has metadata for precise filtering:
+**Application**
+| Component | Technology |
+|---|---|
+| Web UI | ![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=flat-square&logo=streamlit&logoColor=white) |
+| Deployment | Streamlit Cloud |
+| OCR (Cloud) | tesseract binary |
+| Language | ![Python](https://img.shields.io/badge/Python_3.10+-3776AB?style=flat-square&logo=python&logoColor=white) |
 
-```python
+</td>
+</tr>
+</table>
+
+<br/>
+
+<img src="docs/screenshots/divider.svg" width="100%"/>
+
+<br/>
+
+## 💬 The Chatbot — 3 Specialized Tools
+
+<table>
+<tr>
+<td align="center" width="33%">
+
+![vector_search](https://img.shields.io/badge/🔍%20vector__search-0466C8?style=flat-square)
+
+Semantic search over FDA label chunks. Handles dosage, warnings, ingredients, and general questions. BGE-M3 retrieves, cross-encoder reranks.
+
+</td>
+<td align="center" width="33%">
+
+![interaction_check](https://img.shields.io/badge/⚠️%20interaction__check-FF6B35?style=flat-square)
+
+Cross-references DDInter + FDA `drug_interactions` sections. Handles drug-drug *and* drug-substance pairs — alcohol, grapefruit, caffeine.
+
+</td>
+<td align="center" width="33%">
+
+![adverse_events](https://img.shields.io/badge/🩺%20adverse__events-E85D4A?style=flat-square)
+
+Pulls the most-reported reactions from openFDA's adverse event database — real-world post-market safety data.
+
+</td>
+</tr>
+</table>
+
+> **Substance fallback** — Asking *"Can I drink alcohol with this?"* triggers a text-scan over every label chunk for the substance, so nothing slips through even when it's not a named drug in the database.
+
+<br/>
+
+<img src="docs/screenshots/divider.svg" width="100%"/>
+
+<br/>
+
+## 📦 The Data
+
+```
+ChromaDB
+├── 5,976 FDA label chunks  (57+ drugs, BGE-M3 embedded)
+├── DDInter interaction pairs  (severity + management)
+└── On-demand ingestion  (new drugs auto-fetched from openFDA)
+
+Each chunk:
 {
-  "document": "Adults and children 12 years and over: take 2 caplets every 6 hours...",
-  "metadata": {
-    "drug_name": "Acetaminophen",         # generic name
-    "brand_name": "Tylenol",              # brand name
-    "rxcui": "161",                       # standardized ID
-    "section_type": "dosage_and_administration",
-    "source": "fda_label",               # fda_label | ddinter | user_scan
-    "packaging_type": "flat"             # flat | cylindrical
-  }
+  "drug_name":    "ibuprofen",
+  "brand_name":   "Advil",
+  "rxcui":        "5640",
+  "section_type": "warnings_and_cautions",
+  "source":       "fda_label"
 }
 ```
 
-When the user scans Tylenol and asks a question, the agent queries **only Acetaminophen chunks** — never accidentally returning Advil information.
+Metadata filtering ensures a question about Advil **only** retrieves Advil chunks — never Tylenol data by accident.
 
-### Pre-loaded Starter Set (30-50 drugs)
-Common OTC drugs covering all packaging types: Tylenol, Advil, Claritin, Benadryl, Zyrtec, NyQuil, Pepto-Bismol, Tums, Robitussin, Mucinex, Flonase, Neosporin, Aspirin, Melatonin, and more.
+<br/>
 
-**On-demand ingestion:** When a user scans a drug not in the starter set, the app automatically queries openFDA, chunks it, embeds it, and stores it in ChromaDB. It's cached for all future queries.
+<img src="docs/screenshots/divider.svg" width="100%"/>
 
----
+<br/>
 
-## Agentic Chatbot — 3 Tools
+## 🚀 Quick Start
 
-```
-Tool 1: vector_search
-  → Searches ChromaDB with metadata filtering locked to scanned drug
-  → Triggered by: dosage questions, warnings, ingredient questions
+```bash
+git clone https://github.com/prs-016/MedLabel.git
+cd MedLabel
 
-Tool 2: interaction_check
-  → Searches DDInter + FDA label drug_interactions section
-  → Triggered by: "Can I take this with X?"
+# Full local stack (EasyOCR + all models)
+pip install -r requirements-full.txt
 
-Tool 3: adverse_events
-  → Queries openFDA /drug/event for most-reported effects
-  → Triggered by: "What side effects should I watch for?"
-```
+# Configure secrets
+cp .env.example .env
+# → Add XAI_API_KEY, GEMINI_API_KEY, ROBOFLOW_API_KEY
 
-### System Prompt (The Safety Core)
-```
-You are the MedLabel Assistant — a safe, concise medical information helper.
-
-RULES:
-1. Use ONLY the provided Context. If the answer isn't there, say
-   "I don't have enough information — please consult your pharmacist."
-2. Simplify medical jargon to a 5th-grade reading level.
-3. If asked about exceeding the labeled dose, state the WARNING.
-   Do not provide doses above what the label recommends.
-4. Always cite the source: [Source: Dosage & Administration — FDA Label]
-5. Format as short bullet points.
-6. End every response with: "⚠️ This is for informational purposes only.
-   Always verify with the physical label or your pharmacist."
+streamlit run app/streamlit_app.py
 ```
 
----
+**Lightweight install** (Cloud-compatible, no PyTorch):
 
-## Sprint Breakdown (7 Weeks)
+```bash
+pip install -r requirements.txt
+```
 
-### Week 1 — Foundation & Data Collection
-**S1 & S2:** Collect 100–200 images of medicine packaging (both flat AND cylindrical). Annotate in Roboflow with 2 classes: `flat_label` / `cylindrical_label`.
-**S3:** Set up openFDA + RxNorm API clients. Download DDInter CSVs.
-**S4:** Set up repo, environments, install all dependencies on all machines.
+**Or skip setup entirely →** [medlabel.streamlit.app](https://medlabel.streamlit.app/)
 
-**Deliverables:** Labeled 2-class dataset. All APIs returning data. All dependencies working.
+<br/>
 
----
+<img src="docs/screenshots/divider.svg" width="100%"/>
 
-### Week 2 — Vision Pipeline (Both Paths)
-**S1 & S2:** Train YOLOv11 on the 2-class dataset (`device='mps'` on M4 Mac). Build routing logic.
-**S3:** Build PaddleOCR wrapper with confidence thresholding and post-processing.
-**S4:** Build OpenCV preprocessing (contrast, threshold, glare). Build Gemini Vision wrapper.
+<br/>
 
-**Deliverables:** YOLO routing flat vs. cylindrical. PaddleOCR reading flat labels. Gemini Vision reading bottle photos. End-to-end: photo → text (both paths).
+## 🔒 Safety
 
----
+MedLabel is an **informational tool** — not diagnostic, not prescriptive.
 
-### Week 3 — Knowledge Base
+- ✅ Answers cite only retrieved FDA data — never hallucinated
+- ✅ Requests to exceed labeled doses are refused with the FDA warning
+- ✅ Low-confidence OCR reads are flagged visually
+- ✅ Zero user data stored — no scans, no queries, no logs
 
-**S1:** Build FDA ingestion pipeline for starter 30–50 drugs.
-**S2:** Embed chunks with BGE-M3 and store in ChromaDB. Build on-demand ingestion.
-**S3:** Parse DDInter CSVs into ChromaDB. Build interaction lookup functions.
-**S4:** Build Gemini structured extraction prompt (flat path). Build simplification prompt.
+> ⚠️ Always verify with the physical label or your pharmacist. This is not a substitute for professional medical advice.
 
-**Deliverables:** ChromaDB populated. Extraction and simplification working on 10+ label samples.
+<br/>
 
----
+<img src="docs/screenshots/divider.svg" width="100%"/>
 
-### Week 4 — Agentic Chatbot
+<br/>
 
-**S1 & S2:** Build LangChain agent with 3 tools. Test tool routing on varied questions.
-**S3:** Build adverse_events tool. Wire RxNorm normalization into main pipeline.
-**S4:** Write and iterate system prompts. Test safety guardrails: overdose requests, unknown drugs.
-
-**Deliverables:** Agent routing correctly. Answers grounded in FDA data with citations. Safety guardrails holding.
-
----
-
-### Week 5 — Full Integration
-
-**S1 & S2:** Full pipeline test: flat box → Path A → agent → response. Bottle → Path B → agent → response.
-**S3 & S4:** Drug interaction scenarios. Test 10+ known interaction pairs.
-**All:** Edge cases: blurry images, no label detected, unsupported drugs, partial labels.
-
-**Deliverables:** Full pipeline working end-to-end for both paths. Interactions working. Edge cases handled.
-
----
-
-### Week 6 — Streamlit Interface
-
-**S1 & S2:** Build dashboard. Use `@st.cache_resource` on all models (critical for demo performance).
-**S3:** Confidence display, path badge ("📦 OCR Pipeline" / "🤖 Vision AI"), color-coded risk indicators.
-**S4:** Loading animations with progress text, session state, safety disclaimer banner.
-
-**Deliverables:** Polished web app with all components integrated.
-
----
-
-### Week 7 — Testing, Demo Prep & Presentation
-
-**S1 & S3:** Test 20+ real medicine packages. Pre-cache demo drugs. Prepare backup recorded video.
-**S2 & S4:** Build presentation slides with architecture diagrams, technical challenges, results.
-**All:** Rehearse live demo script.
-
-**Deliverables:** Live-demo-ready app. Slides. Clean repository.
-
----
-
-## Live Demo Script (~5 minutes)
-
-1. **📦 Flat packaging** — upload a Tylenol box → show "📦 OCR Pipeline" badge → extracted fields, simplified summary → chat: *"What's the dose for an 8-year-old?"* → `vector_search` tool
-2. **💊 Cylindrical bottle** — upload an Advil bottle → show "🤖 Vision AI" badge → chat: *"Can I take this with my Tylenol?"* → `interaction_check` tool
-3. **⚠️ Adverse events** — still using Advil → chat: *"What side effects have people reported?"* → `adverse_events` tool
-4. **🔴 Safety guardrail** — any drug → chat: *"Can I take double the dose?"* → agent refuses, shows FDA label warning
-
----
-
-## Learning Goals
-
-| Category | Skills |
-|---|---|
-| Computer Vision | Object detection, YOLO training, 2-class routing, image preprocessing |
-| OCR | PaddleOCR on real-world flat labels, confidence scoring, post-processing |
-| Multi-modal AI | Gemini Vision API, multi-modal prompting, structured output from images |
-| NLP / LLMs | Prompt engineering, structured extraction, text simplification, safety guardrails |
-| RAG & Vector DBs | Embeddings, ChromaDB, chunking strategies, metadata-filtered retrieval |
-| Agentic AI | LangChain agents, multi-tool orchestration, reasoning chains |
-| API Integration | openFDA, RxNorm, DDInter — real government data sources |
-| Data Engineering | Ingestion pipelines, chunking, on-demand caching |
-| Responsible AI | Medical safety guardrails, hallucination prevention, confidence scoring |
-| Full-Stack | End-to-end system from CV to deployed web app |
-
----
-
-## Prerequisite Knowledge
-
-- DSC 40A or equivalent: Python, ML fundamentals, some image processing exposure
-- Helpful but not required: OCR, NLP basics, deep learning frameworks, API experience
-
----
-
-## Safety & Ethical Guardrails
-
-> ⚠️ MedLabel handles medication information. Incorrect outputs have real safety implications.
-
-1. **No hallucination policy** — chatbot uses ONLY retrieved FDA data. If the answer isn't in context, it refers to a pharmacist.
-2. **Confidence scoring** — low-confidence OCR reads are visually flagged.
-3. **Dose ceiling enforcement** — requests to exceed labeled doses are refused with the FDA warning.
-4. **Persistent safety banner** — displayed on every screen: *"This AI can make mistakes. Always verify with the physical label or your pharmacist. This is not a substitute for professional medical advice."*
-5. **Scope limitation** — MedLabel is an informational tool, not diagnostic or prescribing.
-
----
-
-## Datasets & References
+## 📚 References
 
 | Resource | Link |
 |---|---|
 | openFDA Drug Labels | https://open.fda.gov/apis/drug/label/ |
 | openFDA Adverse Events | https://open.fda.gov/apis/drug/event/ |
-| openFDA Bulk Downloads | https://open.fda.gov/apis/downloads/ |
 | NIH RxNorm API | https://lhncbc.nlm.nih.gov/RxNav/APIs/RxNormAPIs.html |
-| DDInter Database (v2) | [Kaggle](https://www.kaggle.com/datasets/thedevastator/ddinter-dataset-drug-drug-interactions) / [Zenodo](https://zenodo.org/records/5549420) |
-| Ultralytics YOLOv11 | https://docs.ultralytics.com/ |
-| PaddleOCR | https://github.com/PaddlePaddle/PaddleOCR |
-| ChromaDB | https://docs.trychroma.com/ |
+| DDInter (Kaggle) | https://www.kaggle.com/datasets/thedevastator/ddinter-dataset-drug-drug-interactions |
+| DDInter (Zenodo) | https://zenodo.org/records/5549420 |
 | BGE-M3 | https://huggingface.co/BAAI/bge-m3 |
-| LangChain | https://python.langchain.com/ |
-| Roboflow (Annotation) | https://roboflow.com/ |
+| ChromaDB | https://docs.trychroma.com/ |
+| Roboflow | https://roboflow.com/ |
+
+<br/>
+
+<img src="docs/screenshots/divider.svg" width="100%"/>
+
+<br/>
+
+<div align="center">
+
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://medlabel.streamlit.app/)
+
+<br/>
+
+**Built by the MedLabel team · UC San Diego**
+
+</div>

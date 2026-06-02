@@ -1,24 +1,29 @@
 # Streamlit Community Cloud deployment
-# Heavy ML packages (PaddleOCR, YOLO, FlagEmbedding) are excluded here — they exceed
-# Cloud's resource limits. Use requirements-full.txt for local full-feature installs.
+# EasyOCR/ultralytics are NOT here — both OOM the 1GB Cloud limit (PyTorch models).
+# Flat labels use pytesseract on Cloud (tiny: Python wrapper + tesseract binary via packages.txt).
+# Full local stack (EasyOCR): requirements-full.txt
 
 numpy>=1.21,<3
 pillow
 pillow-heif
+opencv-python-headless>=4.8,<5
+
+# OCR — Cloud uses pytesseract (no PyTorch; tesseract binary in packages.txt)
+pytesseract>=0.3.10
 
 # AI & LLM
-openai>=1.0.0                     # xAI / Grok API client (MedBrain)
+openai>=1.0.0            # xAI / Grok API client
 
 # RAG & Vector DB
-chromadb>=0.4.0                   # Vector store
-sentence-transformers>=2.2.0      # Cross-encoder reranker
+chromadb>=0.4.0          # Vector store
+sentence-transformers>=2.2.0  # Cross-encoder reranker
 
 # Web scraping (DDInter client)
 beautifulsoup4>=4.12.0
 requests>=2.31.0
 
 # Application
-streamlit>=1.30.0        # UI Dashboard
-python-dotenv            # API key management
-pandas                   # Data handling
-pydantic>=2.0.0          # Data validation
+streamlit>=1.30.0
+python-dotenv
+pandas
+pydantic>=2.0.0
