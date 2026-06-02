@@ -681,15 +681,36 @@ def run_ocr(image_path: str, packaging_type: str) -> OCRResult:
     Parameters
     ----------
     image_path     : path to the image file
-    packaging_type : "flat"         → Path A (PaddleOCR)
+    packaging_type : "flat"         → Path A (PaddleOCR) with xAI Vision fallback
                      "cylindrical"  → Path B (xAI Grok Vision)
+                     "auto"         → YOLO detect then route; xAI Vision fallback
     """
     if packaging_type == "cylindrical":
         return run_path_b(image_path)
+
     elif packaging_type == "flat":
-        return run_path_a(image_path)
+        try:
+            return run_path_a(image_path)
+        except ImportError:
+            # PaddleOCR not installed (Cloud deployment) — use xAI Vision
+            result = run_path_b(image_path)
+            result.path_used = "xai_vision (PaddleOCR unavailable — Cloud fallback)"
+            return result
+
+    elif packaging_type == "auto":
+        try:
+            from vision.detector import YOLORouter
+            router = YOLORouter()
+            detected, _bbox, _conf = router.detect_geometry(image_path)
+            return run_ocr(image_path, detected)
+        except ImportError:
+            # ultralytics not installed (Cloud deployment) — use xAI Vision
+            result = run_path_b(image_path)
+            result.path_used = "xai_vision (YOLO unavailable — Cloud fallback)"
+            return result
+
     else:
         raise ValueError(
             f"Unknown packaging_type '{packaging_type}'. "
-            "Expected 'flat' or 'cylindrical'."
+            "Expected 'flat', 'cylindrical', or 'auto'."
         )

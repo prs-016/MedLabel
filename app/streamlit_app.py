@@ -9,14 +9,6 @@ import streamlit as st
 import streamlit.components.v1 as components
 from dotenv import load_dotenv
 
-# Detect whether heavy ML packages are available (they're excluded on Cloud)
-try:
-    import ultralytics  # noqa: F401
-    import paddleocr    # noqa: F401
-    _ML_AVAILABLE = True
-except ImportError:
-    _ML_AVAILABLE = False
-
 # Allow imports from src/
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
@@ -1251,24 +1243,14 @@ else:
     col1, col2 = st.columns([1, 1], gap="large")
 
     with col1:
-        if not _ML_AVAILABLE:
-            st.markdown(
-                """<div style="background:rgba(200,255,87,0.07);border:1px solid rgba(200,255,87,0.2);
-                border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#C8FF57;">
-                ⚡ Cloud deployment — only <strong>xAI Vision</strong> mode is available.
-                Flat label (PaddleOCR) and Auto-detect (YOLO) require local install.</div>""",
-                unsafe_allow_html=True,
-            )
-
         st.markdown('<div class="ml-label">Label type</div>', unsafe_allow_html=True)
-        _unavail = "" if _ML_AVAILABLE else " ✕"
         packaging_type = st.radio(
             "Label type",
             options=["cylindrical", "flat", "auto"],
             format_func=lambda x: {
                 "cylindrical": "\U0001fad9  Bottle / curved label  (xAI Vision)",
-                "flat":        f"\U0001f4e6  Flat label  (PaddleOCR){_unavail}",
-                "auto":        f"\U0001f916  Auto-detect  (YOLO){_unavail}",
+                "flat":        "\U0001f4e6  Flat label  (PaddleOCR)",
+                "auto":        "\U0001f916  Auto-detect  (YOLO)",
             }[x],
             index=0,
             label_visibility="collapsed",
@@ -1343,15 +1325,7 @@ else:
                         st.success(f"Done — confidence: {int(result.confidence * 100)}%")
 
                 except ImportError as exc:
-                    mode_name = {
-                        "flat": "PaddleOCR (flat label)",
-                        "auto": "YOLO auto-detect",
-                        "cylindrical": "xAI Vision",
-                    }.get(packaging_type, "This mode")
-                    st.error(
-                        f"**{mode_name} is not available:** `{exc}`\n\n"
-                        "Switch to **Bottle / curved label (xAI Vision)** — it works on this deployment."
-                    )
+                    st.error(f"A required library is missing: `{exc}` — check your installation.")
                 except Exception as exc:
                     st.error(f"OCR failed: {exc}")
                 finally:
