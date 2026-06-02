@@ -1,24 +1,6 @@
 <div align="center">
 
-<!-- ═══════════════════════════════════════════════════════════ HEADER -->
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/hero.png">
-  <img src="docs/screenshots/hero.png" alt="MedLabel Hero" width="100%"/>
-</picture>
-
-<br/>
-
-```
-███╗   ███╗███████╗██████╗ ██╗      █████╗ ██████╗ ███████╗██╗
-████╗ ████║██╔════╝██╔══██╗██║     ██╔══██╗██╔══██╗██╔════╝██║
-██╔████╔██║█████╗  ██║  ██║██║     ███████║██████╔╝█████╗  ██║
-██║╚██╔╝██║██╔══╝  ██║  ██║██║     ██╔══██║██╔══██╗██╔══╝  ██║
-██║ ╚═╝ ██║███████╗██████╔╝███████╗██║  ██║██████╔╝███████╗███████╗
-╚═╝     ╚═╝╚══════╝╚═════╝ ╚══════╝╚═╝  ╚═╝╚═════╝ ╚══════╝╚══════╝
-```
-
-### Point your phone at any medicine label. Get plain English answers instantly.
+<img src="docs/screenshots/banner.svg" alt="MedLabel" width="100%"/>
 
 <br/>
 
@@ -38,11 +20,11 @@
 
 <br/>
 
----
+<img src="docs/screenshots/divider.svg" width="100%"/>
 
-<!-- ═══════════════════════════════════════════════════════════ ABOUT -->
+<br/>
 
-## What is MedLabel?
+## 💊 What is MedLabel?
 
 MedLabel is a full-stack AI system that makes medication information accessible to everyone. Upload a photo of **any medicine packaging** — a pill bottle, cardboard box, blister strip, or prescription label — and MedLabel reads it, simplifies the instructions into plain English, and lets you ask follow-up questions like *"Can I take this with Advil?"* or *"What side effects should I watch for?"*
 
@@ -50,49 +32,51 @@ Every answer is grounded in **official FDA drug label data** — retrieved, rank
 
 <br/>
 
----
+<img src="docs/screenshots/divider.svg" width="100%"/>
 
-<!-- ══════════════════════════════════════════════════ APP SCREENSHOT -->
+<br/>
 
-## The App
+## 📸 The App
 
 <div align="center">
-<img src="docs/screenshots/scanner.png" alt="MedLabel Scanner UI" width="90%" style="border-radius:12px"/>
-<br/>
-<sub><i>Scanner view — label type selector, upload panel, and three-tab results panel (Extracted · Simplified · Chatbot)</i></sub>
+<img src="docs/screenshots/hero.png" alt="MedLabel Landing Page" width="90%"/>
+<br/><sub>Landing page — dark theme with neon green accent</sub>
+<br/><br/>
+<img src="docs/screenshots/scanner.png" alt="MedLabel Scanner UI" width="90%"/>
+<br/><sub>Scanner — label type selector · upload · three-tab results panel</sub>
 </div>
 
 <br/>
 
----
+<img src="docs/screenshots/divider.svg" width="100%"/>
 
-<!-- ═══════════════════════════════════════════════════════ FEATURES -->
+<br/>
 
-## Features
+## ✨ Features
 
 <table>
 <tr>
 <td width="50%" valign="top">
 
-### 📷 Smart Scanning
-YOLO geometry detection classifies each photo as flat or cylindrical, then routes it to the right OCR pipeline automatically. No manual selection required.
+**📷 Smart Scanning**
+YOLO geometry detection classifies each photo as flat or cylindrical and routes it to the right OCR pipeline automatically.
 
-### 🔍 Neural Semantic Search
-BGE-M3 embeds every query into 1024-dim vectors. A cross-encoder reranker then re-scores the top candidates for precision retrieval over 5,976 FDA chunks.
+**🔍 Neural Semantic Search**
+BGE-M3 embeds every query into 1024-dim vectors. A cross-encoder reranker re-scores the top candidates for precision retrieval over 5,976 FDA chunks.
 
-### 💬 Agentic Chatbot
+**💬 Agentic Chatbot**
 Three specialized tools handle every question type — dosage lookup, interaction checking, and adverse event queries. Each answer cites its FDA source chunk.
 
 </td>
 <td width="50%" valign="top">
 
-### ⚠️ Interaction Checker
-Cross-references DDInter + FDA `drug_interactions` sections. Handles drug-drug *and* drug-substance pairs (alcohol, grapefruit, caffeine). Text-scan fallback catches substances not in the drug database.
+**⚠️ Interaction Checker**
+Cross-references DDInter + FDA `drug_interactions` sections. Handles drug-drug *and* drug-substance pairs (alcohol, grapefruit, caffeine).
 
-### 📋 Plain-English Summary
-Medical jargon simplified to a 5th-grade reading level. The same label text a pharmacist reads, translated for anyone.
+**📋 Plain-English Summary**
+Medical jargon simplified to a 5th-grade reading level — the same label text a pharmacist reads, translated for anyone.
 
-### 🔒 Zero Data Storage
+**🔒 Zero Data Storage**
 No user data, scans, or queries are ever retained. Every session is fully stateless.
 
 </td>
@@ -101,11 +85,11 @@ No user data, scans, or queries are ever retained. Every session is fully statel
 
 <br/>
 
----
+<img src="docs/screenshots/divider.svg" width="100%"/>
 
-<!-- ══════════════════════════════════════════════════ ARCHITECTURE -->
+<br/>
 
-## Architecture
+## 🗺️ Architecture
 
 ```
                     ┌──────────────────────────────┐
@@ -147,11 +131,11 @@ No user data, scans, or queries are ever retained. Every session is fully statel
 
 <br/>
 
----
+<img src="docs/screenshots/divider.svg" width="100%"/>
 
-<!-- ═══════════════════════════════════════════════════ TECH STACK -->
+<br/>
 
-## Tech Stack
+## 🛠️ Tech Stack
 
 <table>
 <tr>
@@ -160,7 +144,7 @@ No user data, scans, or queries are ever retained. Every session is fully statel
 **Vision & OCR**
 | Component | Technology |
 |---|---|
-| Geometry Router | YOLOv11 on Roboflow |
+| Geometry Router | ![YOLO](https://img.shields.io/badge/YOLOv11-FF6B35?style=flat-square) Roboflow |
 | Flat Labels | pytesseract + OpenCV |
 | Curved Bottles | Vision API |
 | Image I/O | Pillow + pillow-heif |
@@ -171,9 +155,9 @@ No user data, scans, or queries are ever retained. Every session is fully statel
 **Intelligence**
 | Component | Technology |
 |---|---|
-| Embeddings | BGE-M3 (1024-dim) |
+| Embeddings | ![BGE-M3](https://img.shields.io/badge/BGE--M3-7B2FBE?style=flat-square) 1024-dim |
 | Reranker | Cross-Encoder (ST) |
-| Vector Store | ChromaDB |
+| Vector Store | ![ChromaDB](https://img.shields.io/badge/ChromaDB-E85D4A?style=flat-square) |
 | Drug IDs | NIH RxNorm API |
 
 </td>
@@ -184,7 +168,7 @@ No user data, scans, or queries are ever retained. Every session is fully statel
 **Data Sources**
 | Source | Content |
 |---|---|
-| openFDA Labels | Dosage, warnings, interactions |
+| ![FDA](https://img.shields.io/badge/openFDA-0466C8?style=flat-square) Labels | Dosage, warnings, interactions |
 | DDInter | Drug-drug interaction pairs |
 | openFDA Events | Adverse event reports |
 | On-demand | Auto-ingest unknown drugs |
@@ -195,10 +179,10 @@ No user data, scans, or queries are ever retained. Every session is fully statel
 **Application**
 | Component | Technology |
 |---|---|
-| Web UI | Streamlit |
+| Web UI | ![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=flat-square&logo=streamlit&logoColor=white) |
 | Deployment | Streamlit Cloud |
 | OCR (Cloud) | tesseract binary |
-| Language | Python 3.10+ |
+| Language | ![Python](https://img.shields.io/badge/Python_3.10+-3776AB?style=flat-square&logo=python&logoColor=white) |
 
 </td>
 </tr>
@@ -206,31 +190,31 @@ No user data, scans, or queries are ever retained. Every session is fully statel
 
 <br/>
 
----
+<img src="docs/screenshots/divider.svg" width="100%"/>
 
-<!-- ═════════════════════════════════════════════════════ CHATBOT -->
+<br/>
 
-## The Chatbot — 3 Specialized Tools
+## 💬 The Chatbot — 3 Specialized Tools
 
 <table>
 <tr>
 <td align="center" width="33%">
 
-**🔍 vector_search**
+![vector_search](https://img.shields.io/badge/🔍%20vector__search-0466C8?style=flat-square)
 
 Semantic search over FDA label chunks. Handles dosage, warnings, ingredients, and general questions. BGE-M3 retrieves, cross-encoder reranks.
 
 </td>
 <td align="center" width="33%">
 
-**⚠️ interaction_check**
+![interaction_check](https://img.shields.io/badge/⚠️%20interaction__check-FF6B35?style=flat-square)
 
-Cross-references DDInter + FDA `drug_interactions` sections. Handles drug-drug *and* drug-substance pairs (alcohol, grapefruit, caffeine).
+Cross-references DDInter + FDA `drug_interactions` sections. Handles drug-drug *and* drug-substance pairs — alcohol, grapefruit, caffeine.
 
 </td>
 <td align="center" width="33%">
 
-**🩺 adverse_events**
+![adverse_events](https://img.shields.io/badge/🩺%20adverse__events-E85D4A?style=flat-square)
 
 Pulls the most-reported reactions from openFDA's adverse event database — real-world post-market safety data.
 
@@ -242,11 +226,11 @@ Pulls the most-reported reactions from openFDA's adverse event database — real
 
 <br/>
 
----
+<img src="docs/screenshots/divider.svg" width="100%"/>
 
-<!-- ══════════════════════════════════════════════════════ DATA -->
+<br/>
 
-## The Data
+## 📦 The Data
 
 ```
 ChromaDB
@@ -268,11 +252,11 @@ Metadata filtering ensures a question about Advil **only** retrieves Advil chunk
 
 <br/>
 
----
+<img src="docs/screenshots/divider.svg" width="100%"/>
 
-<!-- ═══════════════════════════════════════════════ QUICK START -->
+<br/>
 
-## Quick Start
+## 🚀 Quick Start
 
 ```bash
 git clone https://github.com/prs-016/MedLabel.git
@@ -292,18 +276,17 @@ streamlit run app/streamlit_app.py
 
 ```bash
 pip install -r requirements.txt
-# tesseract binary handled via packages.txt on Streamlit Cloud
 ```
 
 **Or skip setup entirely →** [medlabel.streamlit.app](https://medlabel.streamlit.app/)
 
 <br/>
 
----
+<img src="docs/screenshots/divider.svg" width="100%"/>
 
-<!-- ══════════════════════════════════════════════════ SAFETY -->
+<br/>
 
-## Safety
+## 🔒 Safety
 
 MedLabel is an **informational tool** — not diagnostic, not prescriptive.
 
@@ -316,11 +299,11 @@ MedLabel is an **informational tool** — not diagnostic, not prescriptive.
 
 <br/>
 
----
+<img src="docs/screenshots/divider.svg" width="100%"/>
 
-<!-- ═══════════════════════════════════════════════ REFERENCES -->
+<br/>
 
-## References
+## 📚 References
 
 | Resource | Link |
 |---|---|
@@ -335,7 +318,9 @@ MedLabel is an **informational tool** — not diagnostic, not prescriptive.
 
 <br/>
 
----
+<img src="docs/screenshots/divider.svg" width="100%"/>
+
+<br/>
 
 <div align="center">
 
