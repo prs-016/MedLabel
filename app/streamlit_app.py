@@ -1221,7 +1221,7 @@ if not _show_scanner:
 # SCANNER
 # ─────────────────────────────────────────────────────────────────────────────
 else:
-    gemini_status = "Set" if os.getenv("GEMINI_API_KEY") else "Missing"
+    xai_status = "Set" if os.getenv("XAI_API_KEY") else "Missing"
 
     st.markdown("""
 <nav class="ml-nav">
@@ -1376,8 +1376,10 @@ else:
                         st.session_state["simplified_summary"] = None
                         st.rerun()
                 else:
-                    if gemini_status == "Missing":
-                        st.warning("Model key not configured — add it to secrets.")
+                    if xai_status == "Missing":
+                        st.warning(
+                            "xAI API key not set — add `XAI_API_KEY` to your `.env` file."
+                        )
                     else:
                         if st.button("Generate Plain-English Summary", type="primary"):
                             with st.spinner("Simplifying label…"):
