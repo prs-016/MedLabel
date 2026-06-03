@@ -1,10 +1,10 @@
 """
 src/agent/simplifier.py
 ========================
-Gemini-powered plain-English label simplifier.
+Grok-powered plain-English label simplifier.
 
 Takes an OCRResult and returns a summary at a 5th-grade reading level.
-Requires GEMINI_API_KEY in .env.
+Requires XAI_API_KEY in .env (same key as the chatbot).
 """
 
 from __future__ import annotations
@@ -12,16 +12,13 @@ from __future__ import annotations
 import logging
 import os
 
-import requests
 from dotenv import load_dotenv
 
 load_dotenv()
 logger = logging.getLogger(__name__)
 
-_GEMINI_URL = (
-    "https://generativelanguage.googleapis.com/v1beta/models/"
-    "gemini-2.5-flash:generateContent"
-)
+GROK_MODEL = os.getenv("XAI_TEXT_MODEL", "grok-3")
+GROK_BASE_URL = "https://api.x.ai/v1"
 
 _SYSTEM_PROMPT = """\
 You are a medical label assistant helping everyday people understand medicine labels.
@@ -41,19 +38,34 @@ Rules:
   ⚠️ Always verify with the physical label or your pharmacist.
 """
 
+_client = None
+
+
+def _get_client():
+    global _client
+    if _client is None:
+        from openai import OpenAI
+
+        key = os.getenv("XAI_API_KEY", "")
+        if not key:
+            raise ValueError(
+                "XAI_API_KEY not set. Add it to your .env file for plain-English summaries."
+            )
+        _client = OpenAI(api_key=key, base_url=GROK_BASE_URL)
+    return _client
+
 
 def simplify_label(ocr_result) -> str:
     """
-    Simplify an OCRResult into plain English using Gemini 2.5 Flash.
+    Simplify an OCRResult into plain English using Grok.
 
     Returns the formatted summary string, or an explanatory error message
     if the API key is missing or the call fails.
     """
-    api_key = os.getenv("GEMINI_API_KEY", "")
-    if not api_key:
+    if not os.getenv("XAI_API_KEY", ""):
         return (
-            "Gemini API key is not configured. "
-            "Add `GEMINI_API_KEY=your_key` to your .env file."
+            "xAI API key is not configured. "
+            "Add `XAI_API_KEY=your_key` to your .env file."
         )
 
     label_text = _build_label_text(ocr_result)
@@ -61,16 +73,27 @@ def simplify_label(ocr_result) -> str:
         return "No label text available to simplify."
 
     try:
-        return _call_gemini(label_text, api_key)
+        client = _get_client()
+        resp = client.chat.completions.create(
+            model=GROK_MODEL,
+            messages=[
+                {"role": "system", "content": _SYSTEM_PROMPT},
+                {
+                    "role": "user",
+                    "content": f"Label information:\n{label_text}",
+                },
+            ],
+            temperature=0.2,
+            max_tokens=512,
+        )
+        return (resp.choices[0].message.content or "").strip()
     except Exception as exc:
-        logger.error("Gemini simplify error: %s", exc)
+        logger.error("Grok simplify error: %s", exc)
         return f"Could not generate summary: {exc}"
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
-
 def _build_label_text(ocr_result) -> str:
-    """Assemble the extracted fields into a single text block for Gemini."""
+    """Assemble the extracted fields into a single text block for the model."""
     parts: list[str] = []
     if ocr_result.drug_name:
         parts.append(f"Drug name: {ocr_result.drug_name}")
@@ -84,37 +107,6 @@ def _build_label_text(ocr_result) -> str:
         parts.append(f"Directions: {ocr_result.directions}")
     if ocr_result.expiry_date:
         parts.append(f"Expiry: {ocr_result.expiry_date}")
-    # Fall back to raw text when structured extraction found nothing
     if not parts and ocr_result.raw_text:
         parts.append(f"Label text:\n{ocr_result.raw_text[:3000]}")
     return "\n".join(parts)
-
-
-def _call_gemini(label_text: str, api_key: str) -> str:
-    payload = {
-        "contents": [
-            {
-                "parts": [
-                    {"text": _SYSTEM_PROMPT + "\n\nLabel information:\n" + label_text}
-                ]
-            }
-        ]
-    }
-
-    resp = requests.post(
-        _GEMINI_URL,
-        params={"key": api_key},
-        json=payload,
-        timeout=30,
-    )
-
-    if resp.status_code != 200:
-        raise RuntimeError(
-            f"Gemini API returned {resp.status_code}: {resp.text[:300]}"
-        )
-
-    data = resp.json()
-    try:
-        return data["candidates"][0]["content"]["parts"][0]["text"].strip()
-    except (KeyError, IndexError) as exc:
-        raise RuntimeError(f"Unexpected Gemini response shape: {exc}")
