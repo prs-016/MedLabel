@@ -58,6 +58,10 @@ class OCRResult:
     path_used:            str = ""
     confidence:           float = 0.0
     hallucination_flags:  list[str] = field(default_factory=list)
+    # Set when packaging_type="auto" (YOLO / vision geometry step)
+    geometry_detected:    str = ""   # "flat" | "cylindrical"
+    geometry_label:       str = ""   # raw classifier label, e.g. flat_label
+    geometry_confidence:  float = 0.0
 
     @property
     def passed_hallucination_check(self) -> bool:
@@ -66,7 +70,9 @@ class OCRResult:
 
 # ── Path A — PaddleOCR ────────────────────────────────────────────────────────
 
-_CONFIDENCE_THRESHOLD = 0.65
+# PaddleOCR mean line confidence: accept result, try vision fallback, or ask reupload.
+_CONFIDENCE_PASS_THRESHOLD = 0.65
+_VISION_FALLBACK_THRESHOLD = 0.55
 
 # Common dosage units to anchor extraction
 _DOSAGE_UNITS = re.compile(
@@ -198,10 +204,9 @@ def run_path_a(image_path: str) -> OCRResult:
 
     Confidence gate
     ---------------
-    Mean confidence across all detected lines must be ≥ 75 %.
-    If it falls below that threshold the result has no parsed fields and
-    hallucination_flags includes "reupload_required" so callers / the UI
-    can prompt the user to retake the photo.
+    Mean line confidence ≥ 65 % → parsed fields returned.
+    Below 55 % → reupload_required; between 55–65 % → parsed fields but
+    callers may try xAI vision fallback.
     """
     from vision.image_io import load_bgr
 
@@ -223,11 +228,10 @@ def run_path_a(image_path: str) -> OCRResult:
     mean_conf = sum(ln["confidence"] for ln in lines) / len(lines)
     all_text  = "\n".join(ln["text"] for ln in lines)
 
-    # ── Below confidence threshold → ask user to re-upload ───────────────────
-    if mean_conf < _CONFIDENCE_THRESHOLD:
+    if mean_conf < _VISION_FALLBACK_THRESHOLD:
         logger.warning(
             "Path A confidence %.2f < %.2f — requesting reupload for %s",
-            mean_conf, _CONFIDENCE_THRESHOLD, image_path,
+            mean_conf, _VISION_FALLBACK_THRESHOLD, image_path,
         )
         return OCRResult(
             raw_text=all_text,
@@ -236,7 +240,7 @@ def run_path_a(image_path: str) -> OCRResult:
             hallucination_flags=["confidence_too_low", "reupload_required"],
         )
 
-    # ── Extract all sections ──────────────────────────────────────────────────
+    # Marginal 55–65 %: parse fields; _run_flat_with_vision_fallback may try xAI.
     sections = _extract_sections(lines)
 
     return OCRResult(
@@ -769,6 +773,51 @@ def _run_auto_via_vision(image_path: str) -> OCRResult:
                          hallucination_flags=["response_not_json"])
 
 
+def _attach_geometry(
+    result: OCRResult,
+    geo: "GeometryDetection | None",
+    *,
+    route_override: str = "",
+) -> OCRResult:
+    if geo is None:
+        return result
+    result.geometry_detected = route_override or geo.packaging_type
+    result.geometry_label = geo.raw_label
+    result.geometry_confidence = geo.confidence
+    return result
+
+
+def _flat_ocr_usable(result: OCRResult) -> bool:
+    if result.drug_name.strip() and result.confidence >= 0.35:
+        return True
+    if "reupload_required" in result.hallucination_flags:
+        return bool(result.raw_text.strip()) and result.confidence >= 0.45
+    return result.confidence >= _CONFIDENCE_PASS_THRESHOLD
+
+
+def _run_flat_with_vision_fallback(image_path: str) -> OCRResult:
+    try:
+        result = run_path_a(image_path)
+    except ImportError:
+        result = run_path_b(image_path)
+        result.path_used = "xai_vision_flat"
+        return result
+
+    if result.confidence >= _CONFIDENCE_PASS_THRESHOLD:
+        return result
+
+    try:
+        vision = run_path_b(image_path)
+        vision.path_used = "xai_vision_flat_fallback"
+        if vision.confidence > result.confidence or (
+            vision.drug_name.strip() and not result.drug_name.strip()
+        ):
+            return vision
+    except Exception as exc:
+        logger.warning("Flat vision fallback failed: %s", exc)
+    return result
+
+
 def run_ocr(image_path: str, packaging_type: str) -> OCRResult:
     """
     Main entry point called by the rest of the pipeline.
@@ -784,24 +833,54 @@ def run_ocr(image_path: str, packaging_type: str) -> OCRResult:
         return run_path_b(image_path)
 
     elif packaging_type == "flat":
-        try:
-            return run_path_a(image_path)
-        except ImportError:
-            # EasyOCR not installed (Cloud) — use xAI Vision
-            result = run_path_b(image_path)
-            result.path_used = "xai_vision_flat"
-            return result
+        return _run_flat_with_vision_fallback(image_path)
 
     elif packaging_type == "auto":
         try:
-            from vision.detector import YOLORouter
+            from vision.detector import (
+                YOLORouter,
+                _LOW_CONF_CYLINDRICAL_OVERRIDE,
+                _aspect_ratio_bias,
+            )
             router = YOLORouter()
             if router._trained:
-                detected, _bbox, _conf = router.detect_geometry(image_path)
-                return run_ocr(image_path, detected)
-        except Exception:
-            pass  # inference-sdk missing or Roboflow unreachable
-        # Roboflow unavailable — xAI Vision classifies geometry + extracts text
+                geo = router.detect_geometry(image_path)
+                detected = geo.packaging_type
+
+                shape = _aspect_ratio_bias(image_path)
+                if detected == "cylindrical" and shape == "flat":
+                    # Box-shaped photo: always flat pipeline (Paddle → xAI flat),
+                    # even when YOLO is 90%+ wrong on cylindrical.
+                    logger.info(
+                        "YOLO said cylindrical (%.0f%%) but photo is box-shaped — flat path",
+                        geo.confidence * 100,
+                    )
+                    result = _run_flat_with_vision_fallback(image_path)
+                    return _attach_geometry(
+                        result, geo, route_override="flat"
+                    )
+
+                if (
+                    detected == "cylindrical"
+                    and geo.confidence < _LOW_CONF_CYLINDRICAL_OVERRIDE
+                ):
+                    flat_try = _run_flat_with_vision_fallback(image_path)
+                    if _flat_ocr_usable(flat_try):
+                        logger.info(
+                            "YOLO cylindrical at %.0f%% (low conf) — using flat OCR",
+                            geo.confidence * 100,
+                        )
+                        return _attach_geometry(
+                            flat_try, geo, route_override="flat"
+                        )
+
+                if detected == "flat":
+                    result = _run_flat_with_vision_fallback(image_path)
+                else:
+                    result = run_path_b(image_path)
+                return _attach_geometry(result, geo)
+        except Exception as exc:
+            logger.warning("YOLO auto-route failed: %s", exc)
         return _run_auto_via_vision(image_path)
 
     else:

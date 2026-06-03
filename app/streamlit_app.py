@@ -1268,21 +1268,22 @@ else:
     col1, col2 = st.columns([1, 1], gap="large")
 
     with col1:
-        st.markdown('<div class="ml-label">Label type</div>', unsafe_allow_html=True)
-        packaging_type = st.radio(
-            "Label type",
-            options=["cylindrical", "flat"],
-            format_func=lambda x: {
-                "cylindrical": "\U0001fad9  Bottle / curved label",
-                "flat":        "\U0001f4e6  Flat label  (PaddleOCR)",
-            }[x],
-            index=0,
-            label_visibility="collapsed",
-        )
-
-        st.markdown('<div class="ml-label" style="margin-top:24px;">Provide label photo</div>',
+        st.markdown('<div class="ml-label">Provide label photo</div>',
                     unsafe_allow_html=True)
-        
+
+        with st.expander("Label shape", expanded=False):
+            packaging_type = st.radio(
+                "Label shape",
+                options=["auto", "flat", "cylindrical"],
+                format_func=lambda x: {
+                    "auto":        "Auto — YOLO detects shape",
+                    "flat":        "Flat box / blister  (PaddleOCR)",
+                    "cylindrical": "Bottle / curved label  (vision)",
+                }[x],
+                index=0,
+                label_visibility="collapsed",
+            )
+
         # Replaced the single uploader with tabs for both Camera and File Upload options
         input_tab1, input_tab2 = st.tabs(["📸 Take Photo", "📁 Upload File"])
         
@@ -1335,18 +1336,19 @@ else:
                             tmp.write(raw)
                             tmp_path = tmp.name
 
-                    spinner_label = {
-                        "cylindrical": "Reading bottle label…",
-                        "flat":        "Reading flat label…",
-                    }[packaging_type]
-                    with st.spinner(spinner_label):
+                    spinner_labels = {
+                        "auto":        "Detecting label shape (YOLO) and reading text…",
+                        "flat":        "Reading flat label (PaddleOCR)…",
+                        "cylindrical": "Reading bottle label (vision)…",
+                    }
+                    with st.spinner(spinner_labels[packaging_type]):
                         from vision.ocr import run_ocr
                         result = run_ocr(tmp_path, packaging_type=packaging_type)
 
                     if "reupload_required" in result.hallucination_flags:
                         conf_pct = int(result.confidence * 100)
                         st.warning(
-                            f"Image quality too low (confidence: {conf_pct}%, threshold: 75%). "
+                            f"Image quality too low (confidence: {conf_pct}%, threshold: 55%). "
                             "Please retake the photo with better lighting and try again."
                         )
                     else:
@@ -1378,7 +1380,10 @@ else:
                 st.divider()
                 st.caption("All text detected on label:")
                 st.text_area("Raw label text", result.raw_text, height=280, disabled=True)
-                st.caption(f"Path: {result.path_used}  ·  Confidence: {result.confidence:.0%}")
+                st.caption(
+                    f"Path: {result.path_used}  ·  "
+                    f"Confidence: {result.confidence:.0%}"
+                )
             else:
                 st.info("Upload and analyze a label to see results here.")
 
