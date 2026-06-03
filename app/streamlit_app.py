@@ -1271,11 +1271,10 @@ else:
         st.markdown('<div class="ml-label">Label type</div>', unsafe_allow_html=True)
         packaging_type = st.radio(
             "Label type",
-            options=["cylindrical", "flat", "auto"],
+            options=["cylindrical", "flat"],
             format_func=lambda x: {
                 "cylindrical": "\U0001fad9  Bottle / curved label",
                 "flat":        "\U0001f4e6  Flat label  (PaddleOCR)",
-                "auto":        "\U0001f916  Auto-detect  (YOLO)",
             }[x],
             index=0,
             label_visibility="collapsed",
@@ -1339,8 +1338,7 @@ else:
                     spinner_label = {
                         "cylindrical": "Reading bottle label…",
                         "flat":        "Reading flat label…",
-                        "auto":        "Analysing label…",
-                    }.get(packaging_type, "Analysing label…")
+                    }[packaging_type]
                     with st.spinner(spinner_label):
                         from vision.ocr import run_ocr
                         result = run_ocr(tmp_path, packaging_type=packaging_type)
