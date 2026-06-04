@@ -1270,17 +1270,33 @@ else:
     with col1:
         packaging_type = "auto"
 
-        st.markdown('<div class="ml-label">Upload label photo</div>',
+        st.markdown('<div class="ml-label">Provide label photo</div>',
                     unsafe_allow_html=True)
-        uploaded_file = st.file_uploader(
-            "Upload label photo",
-            type=["jpg", "jpeg", "png", "webp", "heic", "heif"],
-            label_visibility="collapsed",
-        )
 
-        if uploaded_file:
-            raw = uploaded_file.getvalue()
-            fname = uploaded_file.name
+        input_tab1, input_tab2 = st.tabs(["📸 Take Photo", "📁 Upload File"])
+
+        raw_image_data = None
+        image_filename = None
+
+        with input_tab1:
+            camera_photo = st.camera_input("Take a picture of the label", label_visibility="collapsed")
+            if camera_photo is not None:
+                raw_image_data = camera_photo.getvalue()
+                image_filename = "camera_capture.jpg"
+
+        with input_tab2:
+            uploaded_file = st.file_uploader(
+                "Upload label photo",
+                type=["jpg", "jpeg", "png", "webp", "heic", "heif"],
+                label_visibility="collapsed",
+            )
+            if uploaded_file is not None:
+                raw_image_data = uploaded_file.getvalue()
+                image_filename = uploaded_file.name
+
+        if raw_image_data and image_filename:
+            raw = raw_image_data
+            fname = image_filename
             img = None
             try:
                 from vision.image_io import open_image
@@ -1292,7 +1308,7 @@ else:
                 st.error(f"Could not open image: {exc}")
 
             if img is not None:
-                st.image(img, caption="Uploaded image", use_container_width=True)
+                st.image(img, caption="Ready for OCR", use_container_width=True)
 
             if img is not None and st.button("Analyze Label", type="primary", use_container_width=True):
                 tmp_path = None
