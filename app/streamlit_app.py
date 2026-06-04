@@ -1268,20 +1268,9 @@ else:
     col1, col2 = st.columns([1, 1], gap="large")
 
     with col1:
-        st.markdown('<div class="ml-label">Label type</div>', unsafe_allow_html=True)
-        packaging_type = st.radio(
-            "Label type",
-            options=["cylindrical", "flat", "auto"],
-            format_func=lambda x: {
-                "cylindrical": "\U0001fad9  Bottle / curved label",
-                "flat":        "\U0001f4e6  Flat label  (PaddleOCR)",
-                "auto":        "\U0001f916  Auto-detect  (YOLO)",
-            }[x],
-            index=0,
-            label_visibility="collapsed",
-        )
+        packaging_type = "auto"
 
-        st.markdown('<div class="ml-label" style="margin-top:24px;">Upload label photo</div>',
+        st.markdown('<div class="ml-label">Upload label photo</div>',
                     unsafe_allow_html=True)
         uploaded_file = st.file_uploader(
             "Upload label photo",
@@ -1318,12 +1307,7 @@ else:
                             tmp.write(raw)
                             tmp_path = tmp.name
 
-                    spinner_label = {
-                        "cylindrical": "Reading bottle label…",
-                        "flat":        "Reading flat label…",
-                        "auto":        "Analysing label…",
-                    }.get(packaging_type, "Analysing label…")
-                    with st.spinner(spinner_label):
+                    with st.spinner("Analysing label…"):
                         from vision.ocr import run_ocr
                         result = run_ocr(tmp_path, packaging_type=packaging_type)
 
